@@ -647,6 +647,25 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
         return truncated or all(self.agent_states.terminated)
 
     # ------------------------------------------------------------------
+    # Agent query helpers
+    # ------------------------------------------------------------------
+
+    def _agent_at(self, pos) -> Agent | None:
+        """
+        Return the agent occupying *pos*, or ``None``.
+
+        Parameters
+        ----------
+        pos : array-like of shape (2,)
+            (x, y) grid coordinate.
+        """
+        pos = tuple(pos)
+        for agent in self.agents:
+            if not agent.state.terminated and tuple(agent.state.pos) == pos:
+                return agent
+        return None
+
+    # ------------------------------------------------------------------
     # Object / agent placement utilities
     # ------------------------------------------------------------------
 
