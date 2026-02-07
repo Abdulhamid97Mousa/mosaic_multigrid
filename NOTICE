@@ -1,0 +1,15 @@
+mosaic_multigrid
+Copyright 2026 Abdulhamid Mousa
+
+This product is a derivative work based on gym-multigrid, which includes
+the following software:
+
+  Multi-Agent Gridworld Environment (MultiGrid)
+  Copyright 2020 Arnaud Fickinger
+  https://github.com/ArnaudFickinger/gym-multigrid
+
+  MiniGrid
+  Copyright 2020 Maxime Chevalier-Boisvert
+  https://github.com/maximecb/gym-minigrid
+
+Licensed under the Apache License, Version 2.0.
