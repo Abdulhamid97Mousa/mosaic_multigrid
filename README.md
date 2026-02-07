@@ -2,19 +2,31 @@
 
 **Research-grade multi-agent gridworld environments for reproducible RL experiments.**
 
-A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-multigrid) by Arnaud Fickinger (2020), with critical bug fixes for reproducibility and modern RL framework compatibility.
+A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-multigrid) by Arnaud Fickinger (2020), modernized to the Gymnasium API with Numba JIT-accelerated observations, reproducible seeding, and multi-agent framework adapters.
 
 This fork is developed as part of the [MOSAIC](https://github.com/Abdulhamid97Mousa/MOSAIC) project (Multi-Agent Orchestration System).
 
-## Why This Fork?
+## What Changed from Upstream
 
-The upstream `gym-multigrid` has not been updated since 2020 and contains several bugs that make it unsuitable for reproducible research. This fork addresses:
+| Aspect | Upstream (Fickinger 2020) | This Fork |
+|--------|--------------------------|-----------|
+| API | Old Gym 4-tuple, list-based | Gymnasium 5-tuple, dict-keyed per agent |
+| Actions | 8 (still=0..done=7) | 7 (left=0..done=6), no "still" |
+| Observations | `(view, view, 6)` list | `(view, view, 3)` dict with `image`, `direction`, `mission` |
+| `reset()` | `List[obs]` | `(Dict[int, obs], Dict[int, info])` |
+| `step()` | `(List[obs], ndarray, bool, dict)` | `(Dict, Dict, Dict, Dict, Dict)` |
+| Render | `render(mode='human')` param | `render_mode` constructor param |
+| Seeding | `env.seed(42)` + broken global RNG | `reset(seed=42)` + `self.np_random` |
+| Window | matplotlib | pygame |
+| Performance | Pure Python loops | Numba JIT on observation generation |
+| Structure | 1 monolithic 1442-line file | ~20 focused modules |
+| Dependencies | `gym>=0.9.6, numpy` | `gymnasium>=0.26, numpy, numba, pygame, aenum` |
 
-1. **Non-deterministic action ordering** -- the `step()` method uses the global NumPy RNG instead of the seeded environment RNG, making experiments non-reproducible even when properly seeded.
-2. **No `render_mode` constructor parameter** -- environments use the legacy `render(mode='human')` API, which is incompatible with Gymnasium's `render_mode` constructor protocol and prevents integration with automated frame-capture wrappers.
-3. **Old Gym API** -- returns 4-tuple `(obs, reward, done, info)` instead of the Gymnasium 5-tuple `(obs, reward, terminated, truncated, info)`.
+### Bugs Fixed
 
-See [Known Issues](#known-issues) for full details.
+1. **Reproducibility bug** (critical): `step()` used `np.random.permutation()` (global RNG) for action ordering. Now uses `self.np_random.random(size=N).argsort()` to respect environment seeding.
+2. **No `render_mode`**: Constructor now accepts `render_mode='rgb_array'` or `render_mode='human'`, following Gymnasium convention.
+3. **Legacy 4-tuple**: `step()` returns Gymnasium 5-tuple `(obs, rewards, terminated, truncated, info)` with per-agent dicts.
 
 ## Included Environments
 
@@ -26,9 +38,9 @@ See [Known Issues](#known-issues) for full details.
   <img src="figures/soccer_4.png" width="200">
 </p>
 
-Each agent gets a positive reward when any agent on their team drops the ball in the correct goal, and a negative reward when the opposing team scores. Agents can pass the ball or take it from another agent. The number of teams, players per team, goals, and balls are configurable.
+Team-based competitive environment. Agents score by dropping the ball at the opposing team's goal. Supports ball passing, stealing, and zero-sum team rewards.
 
-**Default variant:** `SoccerGame4HEnv10x15N2` -- 4 agents (2v2), 15x10 grid, 1 ball, zero-sum rewards.
+**Default variant:** `SoccerGame4HEnv10x15N2` -- 4 agents (2v2), 15x10 grid, 1 ball.
 
 ### CollectGame
 
@@ -37,7 +49,7 @@ Each agent gets a positive reward when any agent on their team drops the ball in
   <img src="figures/collect_2.png" width="200">
 </p>
 
-Each agent gets a positive reward for collecting a ball of the same color and a negative reward for collecting a ball of a different color. The number of balls, colors, and players are configurable.
+Cooperative/competitive collection. Agents earn rewards for picking up same-color balls and penalties for different-color balls.
 
 **Default variant:** `CollectGame4HEnv10x10N2` -- 4 agents, 10x10 grid, 2 ball colors.
 
@@ -47,6 +59,11 @@ Each agent gets a positive reward for collecting a ball of the same color and a 
 git clone https://github.com/Abdulhamid97Mousa/mosaic_multigrid.git
 cd mosaic_multigrid
 pip install -e .
+
+# With optional framework adapters
+pip install -e ".[rllib]"       # Ray RLlib support
+pip install -e ".[pettingzoo]"  # PettingZoo support
+pip install -e ".[dev]"         # pytest
 ```
 
 ## Quick Start
@@ -54,120 +71,153 @@ pip install -e .
 ```python
 from gym_multigrid.envs import SoccerGame4HEnv10x15N2
 
-env = SoccerGame4HEnv10x15N2()
-env.seed(42)
-obs = env.reset()
+env = SoccerGame4HEnv10x15N2(render_mode='rgb_array')
+obs, info = env.reset(seed=42)
 
-# 4 agents, 7 possible actions each (0=left, 1=right, 2=forward, 3=pickup, 4=drop, 5=toggle, 6=done)
-actions = [env.action_space.sample() for _ in range(4)]
-obs, rewards, done, info = env.step(actions)
+# obs is a dict keyed by agent index: {0: {...}, 1: {...}, 2: {...}, 3: {...}}
+# Each agent's obs has 'image', 'direction', 'mission' keys
+
+actions = {i: env.action_space[i].sample() for i in range(env.num_agents)}
+obs, rewards, terminated, truncated, info = env.step(actions)
 
 # Render RGB frame
-img = env.render(mode='rgb_array')  # Returns numpy array (H, W, 3)
+frame = env.render()  # Returns numpy array (H, W, 3)
+env.close()
+```
+
+### Reproducibility
+
+```python
+# Same seed → identical trajectories (reproducibility bug is fixed)
+for trial in range(2):
+    env = SoccerGame4HEnv10x15N2(render_mode='rgb_array')
+    obs, _ = env.reset(seed=42)
+    for step in range(100):
+        actions = {i: 2 for i in range(4)}  # all forward
+        obs, *_ = env.step(actions)
+    # obs will be identical across trials
+```
+
+## Architecture
+
+```
+gym_multigrid/
+├── base.py                  # MultiGridEnv (Gymnasium-compliant base)
+├── core/
+│   ├── constants.py         # Type, Color, State, Direction enums
+│   ├── actions.py           # Action enum (7 actions, no "still")
+│   ├── world_object.py      # WorldObj numpy-subclass + all object types
+│   ├── agent.py             # Agent + AgentState (vectorized, team_index)
+│   ├── grid.py              # Grid (numpy state + world_objects cache)
+│   └── mission.py           # Mission + MissionSpace
+├── utils/
+│   ├── enum.py              # IndexedEnum (aenum-based, dynamically extensible)
+│   ├── rendering.py         # Tile rendering (fill_coords, downsample, etc.)
+│   ├── random.py            # RandomMixin (seeded RNG utilities)
+│   ├── obs.py               # Numba JIT observation generation (hot path)
+│   └── misc.py              # front_pos, PropertyAlias
+├── envs/
+│   ├── soccer_game.py       # SoccerGameEnv + variants
+│   └── collect_game.py      # CollectGameEnv + variants
+├── wrappers.py              # FullyObs, ImgObs, OneHotObs, SingleAgent
+├── pettingzoo/              # PettingZoo ParallelEnv adapter
+└── rllib/                   # Ray RLlib MultiAgentEnv adapter
+```
+
+### Core Design Decisions
+
+**Agent-not-in-grid**: Agents are NOT stored on the grid (following multigrid-ini). Agent positions are tracked via `AgentState.pos`. The observation generator inserts agents into the observation grid dynamically. This avoids grid corruption when agents overlap.
+
+**numpy subclass pattern**: `WorldObj(np.ndarray)` and `AgentState(np.ndarray)` — domain objects ARE their numerical encoding. No serialization overhead.
+
+**team_index separation**: `agent.index` (unique identity) vs `agent.team_index` (team membership). The original code conflated these — your agent index WAS your team.
+
+**Numba JIT**: All observation generation functions use `@nb.njit(cache=True)`. Enum values are extracted to plain `int` constants at module level because Numba cannot access Python enum attributes.
+
+## Action Space
+
+### Action Enum Comparison
+
+| Action | Upstream (Fickinger 2020) | mosaic_multigrid (this fork) | multigrid-ini (Oguntola 2023) |
+|--------|---:|---:|---:|
+| still | **0** | -- | -- |
+| left | 1 | **0** | **0** |
+| right | 2 | **1** | **1** |
+| forward | 3 | **2** | **2** |
+| pickup | 4 | **3** | **3** |
+| drop | 5 | **4** | **4** |
+| toggle | 6 | **5** | **5** |
+| done | 7 | **6** | **6** |
+| **Total** | **8** | **7** | **7** |
+
+The `still` action (do nothing) was removed. Agents that need to skip a turn send `Action.done` instead. This aligns with multigrid-ini and shrinks the action space from 8 to 7.
+
+> **Migration note:** All action indices shifted down by 1 compared to the upstream code. Any pre-trained policy or hardcoded action mapping from the old environment will need updating.
+
+## Observation Space
+
+Each agent receives a partial observation dict:
+
+```python
+{
+    'image': np.ndarray,     # (view_size, view_size, 3) — [Type, Color, State] per cell
+    'direction': int,        # Agent facing direction (0=right, 1=down, 2=left, 3=up)
+    'mission': str,          # Mission string
+}
+```
+
+The default `view_size=7` gives each agent a 7x7 partial view. Each cell encodes 3 values (Type index, Color index, State index), down from 6 in the original.
+
+## Wrappers
+
+| Wrapper | Description |
+|---------|-------------|
+| `FullyObsWrapper` | Full grid observation instead of partial agent view |
+| `ImgObsWrapper` | Returns only the image array (drops direction/mission) |
+| `OneHotObsWrapper` | One-hot encodes the observation image (Numba JIT) |
+| `SingleAgentWrapper` | Unwraps multi-agent dict for single-agent use |
+
+## Framework Adapters
+
+### PettingZoo
+
+```python
+from gym_multigrid.pettingzoo import to_pettingzoo_env
+
+env = to_pettingzoo_env('MosaicMultiGrid-Soccer-v0', render_mode='rgb_array')
+# Returns a PettingZoo ParallelEnv
+```
+
+### Ray RLlib
+
+```python
+from gym_multigrid.rllib import to_rllib_env
+
+env_cls = to_rllib_env('MosaicMultiGrid-Soccer-v0')
+# Returns an RLlib MultiAgentEnv class (adds __all__ keys to terminated/truncated)
 ```
 
 ## Requirements
 
-- Python 3.8+
-- OpenAI Gym >= 0.21.0
-- NumPy >= 1.15.0
+- Python >= 3.9
+- gymnasium >= 0.26
+- numpy >= 1.18
+- numba >= 0.53
+- pygame >= 2.2
+- aenum >= 1.3
 
-## Known Issues
+**Optional:**
+- `ray[rllib] >= 2.0` (for RLlib adapter)
+- `pettingzoo >= 1.22` (for PettingZoo adapter)
 
-### Issue #1: Non-Deterministic Action Ordering (Reproducibility Bug)
+## Tests
 
-**Severity:** Critical for research reproducibility
-**Location:** `gym_multigrid/multigrid.py:1249`
-
-```python
-def step(self, actions):
-    self.step_count += 1
-    order = np.random.permutation(len(actions))  # BUG: uses global RNG
+```bash
+pip install -e ".[dev]"
+pytest tests/ -v
 ```
 
-The `step()` method randomizes the order in which agent actions are executed using `np.random.permutation()`, which draws from the **global NumPy RNG**. This completely ignores the seeded `self.np_random` that was set via `env.seed()`.
-
-**Impact:**
-- Even with proper seeding (`env.seed(42)`), the initial state is deterministic but subsequent steps are not
-- Action execution order varies between runs, causing trajectory divergence
-- Makes ablation studies, LLM-vs-RL comparisons, and published results non-reproducible
-- This is likely a contributing factor to why gym-multigrid Soccer is rarely seen in published research
-
-**Expected behavior:** `step()` should use `self.np_random.permutation()` instead of `np.random.permutation()` to respect environment seeding.
-
-**Workaround (MOSAIC):** MOSAIC applies a `ReproducibleMultiGridWrapper` that seeds the global `np.random` from the environment's seeded RNG before each `step()` call. See [MOSAIC docs](https://github.com/Abdulhamid97Mousa/MOSAIC) for details.
-
----
-
-### Issue #2: No `render_mode` Constructor Parameter (Gymnasium Incompatibility)
-
-**Severity:** High for framework integration
-**Location:** `gym_multigrid/envs/soccer_game.py:108-118`, `gym_multigrid/multigrid.py:1383`
-
-The environment constructors accept **zero arguments** for the concrete variants:
-
-```python
-class SoccerGame4HEnv10x15N2(SoccerGameEnv):
-    def __init__(self):  # No render_mode parameter!
-        super().__init__(size=None, height=10, width=15, ...)
-```
-
-And the `render()` method uses the legacy Gym API:
-
-```python
-def render(self, mode='human', close=False, highlight=False, tile_size=TILE_PIXELS):
-    # mode is a method parameter, not a constructor attribute
-```
-
-**Impact:**
-- Cannot set `render_mode='rgb_array'` at construction time (Gymnasium convention)
-- Automated frame-capture wrappers (like MOSAIC's FastLane, Gymnasium's `RecordVideo`, or `HumanRendering`) that check `env.render_mode` will find it missing and skip frame capture
-- The `sitecustomize.py` gym.make() patching approach (used for BabyAI environments) does not work here because Soccer environments are created via direct class instantiation, not `gym.make()`
-- Training visualization is silently broken: no error is raised, but no frames are published
-
-**Expected behavior:** Environment constructors should accept a `render_mode` parameter and store it as `self.render_mode`, following the [Gymnasium API convention](https://gymnasium.farama.org/api/env/#gymnasium.Env.render_mode).
-
-**Workaround (MOSAIC):** The `GymToGymnasiumWrapper` in `xuance_worker/environments/multigrid.py` needs to explicitly set `render_mode` on the wrapped environment and ensure `render()` returns RGB arrays when `render_mode='rgb_array'`.
-
----
-
-### Issue #3: Legacy Gym 4-Tuple Return Format
-
-**Severity:** Medium (compatibility)
-**Location:** `gym_multigrid/multigrid.py` (step method), `gym_multigrid/envs/soccer_game.py:103-105`
-
-```python
-def step(self, actions):
-    obs, rewards, done, info = MultiGridEnv.step(self, actions)
-    return obs, rewards, done, info  # 4-tuple, no truncated signal
-```
-
-**Impact:**
-- Modern RL libraries (CleanRL, Stable-Baselines3, RLlib) expect the Gymnasium 5-tuple: `(obs, reward, terminated, truncated, info)`
-- Requires a wrapper to split `done` into `terminated` and `truncated`
-- The `max_steps=10000` truncation is conflated with episode termination
-
-## Observation Space
-
-Each grid cell is encoded as a tuple containing:
-- Object type (wall, floor, lava, door, key, ball, box, goal, object goal, agent)
-- Object color
-- Type of object the other agent is carrying
-- Color of object the other agent is carrying
-- Direction of the other agent
-- Whether the other agent is self (useful for fully observable view)
-
-## Action Space
-
-| Action | ID | Description |
-|--------|---:|-------------|
-| Turn left | 0 | Rotate 90 degrees left |
-| Turn right | 1 | Rotate 90 degrees right |
-| Move forward | 2 | Move one cell forward |
-| Pick up | 3 | Pick up object in front |
-| Drop | 4 | Drop carried object |
-| Toggle | 5 | Interact with object |
-| Done | 6 | Signal task completion |
+94 tests covering: Action enum, Type/Color/State/Direction enums, WorldObj encode/decode, Grid operations, AgentState vectorized ops, Agent team_index, Mission/MissionSpace, MultiGridEnv reset/step/render, pickup/drop mechanics, Numba JIT observations, rendering dimensions, and reproducibility.
 
 ## Citation
 
