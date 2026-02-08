@@ -36,6 +36,7 @@ STATE = WorldObj.STATE
 
 WALL = int(Type.wall)
 DOOR = int(Type.door)
+BALL = int(Type.ball)
 
 OPEN = int(State.open)
 CLOSED = int(State.closed)
@@ -45,6 +46,13 @@ RIGHT = int(Direction.right)
 LEFT = int(Direction.left)
 UP = int(Direction.up)
 DOWN = int(Direction.down)
+
+# Ball carrying flag for STATE channel encoding
+# Uses offset 100 to avoid conflict with door states (0-2) and agent direction (0-3)
+# STATE channel encoding for agents:
+#   0-3:     Agent direction (right/down/left/up) when NOT carrying ball
+#   100-103: Agent direction + ball carrying flag
+CARRYING_BALL_OFFSET = 100
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +190,17 @@ def gen_obs_grid(
         for agent in range(num_agents):
             if not agent_terminated[agent]:
                 i, j = agent_pos[agent]
-                grid_encoding[i, j, GRID_ENCODING_IDX] = (
-                    agent_grid_encoding[agent])
+                # Get base encoding (type, color, direction)
+                encoding = agent_grid_encoding[agent].copy()
+
+                # Check if agent is carrying a ball - add carrying flag to STATE
+                carrying = agent_carrying_encoding[agent]
+                if carrying[TYPE] == BALL:
+                    # Agent is carrying a ball - add offset to STATE channel
+                    # This encodes both direction and "has ball" flag
+                    encoding[STATE] += CARRYING_BALL_OFFSET
+
+                grid_encoding[i, j, GRID_ENCODING_IDX] = encoding
     else:
         grid_encoding = grid_state[..., GRID_ENCODING_IDX]
 

@@ -155,14 +155,14 @@ class TestSoccerMechanics:
 class TestCollectEnv:
     def test_creation(self):
         env = CollectGame4HEnv10x10N2(render_mode='rgb_array')
-        assert env.num_agents == 3
+        assert env.num_agents == 4
         assert env.width == 10
         assert env.height == 10
 
     def test_team_assignments(self):
         env = CollectGame4HEnv10x10N2()
         teams = [a.team_index for a in env.agents]
-        assert teams == [1, 2, 3]  # each agent on own team
+        assert teams == [1, 1, 2, 2]  # 2v2 teams
 
     def test_balls_placed(self):
         env = CollectGame4HEnv10x10N2()
@@ -173,7 +173,7 @@ class TestCollectEnv:
                 obj = env.grid.get(x, y)
                 if obj and obj.type == Type.ball:
                     ball_count += 1
-        assert ball_count == 5  # 5 wildcard balls
+        assert ball_count == 7  # 7 wildcard balls (odd number prevents draws)
 
     def test_zero_sum(self):
         env = CollectGame4HEnv10x10N2()

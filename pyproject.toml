@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mosaic_multigrid"
-version = "1.0.2"
+version = "1.5.0"
 description = "Research-grade multi-agent gridworld environments for reproducible RL experiments"
 readme = "README.md"
 requires-python = ">=3.9"

@@ -17,6 +17,7 @@ from ..utils.misc import front_pos, PropertyAlias
 from ..utils.rendering import (
     fill_coords,
     point_in_triangle,
+    point_in_circle,
     rotate_fn,
 )
 
@@ -146,14 +147,54 @@ class Agent:
             Index of the agent type.
         color_idx : int
             Index of the agent color.
-        agent_dir : int
-            The direction of the agent.
+        state : int
+            Agent state encoding in the STATE channel:
+            - **0-3**: Direction (right/down/left/up) when NOT carrying
+            - **100-103**: Direction + ball carrying flag (100=right+ball, etc.)
+
+        Notes
+        -----
+        The ball carrying flag uses offset 100 to avoid conflicting with door
+        state values (0=open, 1=closed, 2=locked) used in other MiniGrid
+        environments. Since Soccer and Collect games have NO doors, this STATE
+        channel space is available for repurposing.
+
+        This encoding enables agents to observe when OTHER agents are carrying
+        the ball, solving a critical observability limitation in multi-agent
+        competitive scenarios.
+
+        **Why this matters:**
+        In the original 3-channel encoding, agents could only see:
+        - Agent TYPE (channel 0)
+        - Agent COLOR/team (channel 1)
+        - Agent DIRECTION (channel 2: 0-3)
+
+        But they could NOT see if the agent was carrying a ball! This made
+        stealing/defense strategies impossible without memory (LSTM).
+
+        **The fix:**
+        We repurpose unused door state space (Soccer/Collect have no doors)
+        to encode ball carrying:
+        - STATE < 100: Agent without ball
+        - STATE >= 100: Agent with ball (direction = STATE - 100)
+
+        **Backward compatibility:**
+        Door-based environments remain unaffected since door states (0-2) and
+        agent states (0-3, 100-103) never overlap.
         """
-        return (Type.agent.to_index(), self.state.color.to_index(), self.state.dir)
+        state = self.state.dir  # Base direction: 0-3
+
+        # Check if agent is carrying a ball
+        if (self.state.carrying is not None and
+                self.state.carrying.type == Type.ball):
+            state += 100  # Add carrying flag (100-103 range)
+
+        return (Type.agent.to_index(), self.state.color.to_index(), state)
 
     def render(self, img: ndarray[np.uint8]) -> None:
         """
         Draw the agent as a colored triangle pointing in its direction.
+        If carrying a ball, draw a small colored circle on top of the agent.
 
         Parameters
         ----------
@@ -169,6 +210,14 @@ class Agent:
         # Rotate the triangle based on the agent's direction
         tri_fn = rotate_fn(tri_fn, cx=0.5, cy=0.5, theta=0.5 * np.pi * self.state.dir)
         fill_coords(img, tri_fn, self.state.color.rgb())
+
+        # Draw ball-carrying indicator: small circle overlay (half the normal ball size)
+        if self.state.carrying is not None and self.state.carrying.type == Type.ball:
+            # Small circle at center of agent (radius = 0.15, half of ball's 0.3)
+            circle_fn = point_in_circle(cx=0.5, cy=0.5, r=0.15)
+            # Use the ball's color for the indicator
+            ball_color = self.state.carrying.color.rgb()
+            fill_coords(img, circle_fn, ball_color)
 
 
 class AgentState(np.ndarray):

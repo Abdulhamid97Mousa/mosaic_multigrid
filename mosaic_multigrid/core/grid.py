@@ -230,9 +230,11 @@ class Grid:
         # Build a hashable cache key
         key: tuple[Any, ...] = (highlight, tile_size)
         if agent:
-            key += (agent.state.color, agent.state.dir)
+            # Include carrying info so the ball overlay is not skipped by cache
+            carrying_key = agent.state.carrying.encode() if agent.state.carrying is not None else None
+            key += (agent.state.color, agent.state.dir, carrying_key)
         else:
-            key += (None, None)
+            key += (None, None, None)
         key = obj.encode() + key if obj else key
 
         if key in cls._tile_cache:

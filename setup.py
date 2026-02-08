@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mosaic_multigrid',
-    version='0.1.0',
+    version='1.5.0',
     description='Research-grade multi-agent gridworld environments for reproducible RL experiments',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
