@@ -12,8 +12,11 @@ setup(
     license='Apache-2.0',
     packages=find_packages(),
     install_requires=[
-        'gym>=0.21.0',
-        'numpy>=1.15.0',
+        'gymnasium>=1.0.0',
+        'numpy>=1.24.0',
+        'aenum>=3.1.0',
+        'numba>=0.58.0',
+        'pygame>=2.5.0',
     ],
     python_requires='>=3.8',
     classifiers=[

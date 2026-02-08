@@ -2,7 +2,7 @@
 
 Usage::
 
-    from gym_multigrid.rllib import RLlibWrapper, to_rllib_env
+    from mosaic_multigrid.rllib import RLlibWrapper, to_rllib_env
 
     # Wrap an existing env instance
     env = RLlibWrapper(my_multigrid_env)

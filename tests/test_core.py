@@ -7,7 +7,7 @@ team_index, Mission/MissionSpace.
 import numpy as np
 import pytest
 
-from gym_multigrid.core import (
+from mosaic_multigrid.core import (
     Action,
     Agent,
     AgentState,

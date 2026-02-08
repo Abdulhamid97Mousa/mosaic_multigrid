@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mosaic_multigrid"
-version = "0.2.0"
+version = "1.0.2"
 description = "Research-grade multi-agent gridworld environments for reproducible RL experiments"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,7 +21,7 @@ keywords = [
     "competitive",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.9",
@@ -51,7 +51,7 @@ Homepage = "https://github.com/Abdulhamid97Mousa/mosaic_multigrid"
 Repository = "https://github.com/Abdulhamid97Mousa/mosaic_multigrid"
 
 [tool.setuptools.packages.find]
-include = ["gym_multigrid*"]
+include = ["mosaic_multigrid*"]
 
 [tool.pyright]
 pythonVersion = "3.9"

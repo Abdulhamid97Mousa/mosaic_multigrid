@@ -27,3 +27,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# PyPI credentials (NEVER commit!)
+.pypirc

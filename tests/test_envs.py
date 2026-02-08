@@ -8,13 +8,13 @@ import numpy as np
 import pytest
 import gymnasium as gym
 
-from gym_multigrid.envs import (
+from mosaic_multigrid.envs import (
     SoccerGameEnv,
     SoccerGame4HEnv10x15N2,
     CollectGameEnv,
     CollectGame4HEnv10x10N2,
 )
-from gym_multigrid.core import Action, Type
+from mosaic_multigrid.core import Action, Type
 
 
 # ---------------------------------------------------------------
@@ -136,7 +136,7 @@ class TestSoccerMechanics:
         env.reset(seed=42)
 
         # Give agent a ball
-        from gym_multigrid.core import Ball, Color
+        from mosaic_multigrid.core import Ball, Color
         agent = env.agents[0]
         agent.state.carrying = Ball(color=Color.red, index=0)
         agent.state.pos = (3, 3)

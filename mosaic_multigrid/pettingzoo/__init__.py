@@ -2,7 +2,7 @@
 
 Usage::
 
-    from gym_multigrid.pettingzoo import PettingZooWrapper, to_pettingzoo_env
+    from mosaic_multigrid.pettingzoo import PettingZooWrapper, to_pettingzoo_env
 
     # Wrap an existing env instance
     env = PettingZooWrapper(my_multigrid_env)
@@ -144,7 +144,7 @@ def to_pettingzoo_env(
 
     Example
     -------
-    >>> from gym_multigrid.envs import SoccerGame4HEnv10x15N2
+    >>> from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2
     >>> PZEnv = to_pettingzoo_env(SoccerGame4HEnv10x15N2)
     >>> env = PZEnv(render_mode='rgb_array')
     >>> obs, info = env.reset(seed=42)

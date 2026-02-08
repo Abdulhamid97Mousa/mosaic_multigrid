@@ -7,8 +7,8 @@ obs generation, rendering (rgb_array mode).
 import numpy as np
 import pytest
 
-from gym_multigrid.base import MultiGridEnv
-from gym_multigrid.core import (
+from mosaic_multigrid.base import MultiGridEnv
+from mosaic_multigrid.core import (
     Action,
     Agent,
     Ball,
@@ -19,7 +19,7 @@ from gym_multigrid.core import (
     Type,
     WorldObj,
 )
-from gym_multigrid.utils.obs import gen_obs_grid_encoding
+from mosaic_multigrid.utils.obs import gen_obs_grid_encoding
 
 
 # ---------------------------------------------------------------
@@ -352,8 +352,8 @@ class TestReproducibility:
     def test_different_seeds_different_behavior(self):
         """Different seeds should produce different random sequences."""
         # This test uses place_agent which is random
-        from gym_multigrid.base import MultiGridEnv
-        from gym_multigrid.core import Grid, Agent, Direction
+        from mosaic_multigrid.base import MultiGridEnv
+        from mosaic_multigrid.core import Grid, Agent, Direction
 
         class RandomPlaceEnv(MultiGridEnv):
             def __init__(self):

@@ -5,14 +5,14 @@ Covers: FullyObsWrapper, ImgObsWrapper, OneHotObsWrapper, SingleAgentWrapper.
 import numpy as np
 import pytest
 
-from gym_multigrid.envs import SoccerGame4HEnv10x15N2
-from gym_multigrid.wrappers import (
+from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2
+from mosaic_multigrid.wrappers import (
     FullyObsWrapper,
     ImgObsWrapper,
     OneHotObsWrapper,
     SingleAgentWrapper,
 )
-from gym_multigrid.core import Action, WorldObj
+from mosaic_multigrid.core import Action, WorldObj
 
 
 # ---------------------------------------------------------------
@@ -80,7 +80,7 @@ class TestOneHotObsWrapper:
 
         # Default view_size=3, should be (3, 3, sum(dim_sizes))
         # dim_sizes = [len(Type), len(Color), max(len(State), len(Direction))]
-        from gym_multigrid.core import Type, Color, State, Direction
+        from mosaic_multigrid.core import Type, Color, State, Direction
         expected_depth = len(Type) + len(Color) + max(len(State), len(Direction))
 
         assert obs[0]['image'].shape[2] == expected_depth

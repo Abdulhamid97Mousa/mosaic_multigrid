@@ -6,21 +6,61 @@ A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-mult
 
 This fork is developed as part of the [MOSAIC](https://github.com/Abdulhamid97Mousa/MOSAIC) project (Multi-Agent Orchestration System).
 
-## What Changed from Upstream
+## Design Philosophy: Best of Both Worlds
 
-| Aspect | Upstream (Fickinger 2020) | This Fork |
-|--------|--------------------------|-----------|
-| API | Old Gym 4-tuple, list-based | Gymnasium 5-tuple, dict-keyed per agent |
-| Actions | 8 (still=0..done=7) | 7 (left=0..done=6), no "still" |
-| Observations | `(view, view, 6)` list | `(view, view, 3)` dict with `image`, `direction`, `mission` |
-| `reset()` | `List[obs]` | `(Dict[int, obs], Dict[int, info])` |
-| `step()` | `(List[obs], ndarray, bool, dict)` | `(Dict, Dict, Dict, Dict, Dict)` |
-| Render | `render(mode='human')` param | `render_mode` constructor param |
-| Seeding | `env.seed(42)` + broken global RNG | `reset(seed=42)` + `self.np_random` |
-| Window | matplotlib | pygame |
-| Performance | Pure Python loops | Numba JIT on observation generation |
-| Structure | 1 monolithic 1442-line file | ~20 focused modules |
-| Dependencies | `gym>=0.9.6, numpy` | `gymnasium>=0.26, numpy, numba, pygame, aenum` |
+**mosaic_multigrid = gym-multigrid game design + INI multigrid modern infrastructure**
+
+We kept the **challenging partial observability** (`view_size=3`) that makes Soccer/Collect interesting for competitive multi-agent research, while adopting **modern API and optimizations** from INI multigrid standards.
+
+### What We Kept from gym-multigrid (Fickinger 2020)
+
+1. **Partial observability** - `view_size=3` for Soccer/Collect (challenging team coordination)
+2. **Game mechanics** - Ball passing, stealing, scoring, team rewards
+3. **Research continuity** - Comparable with original papers
+
+### What We Adopted from INI multigrid (2022+)
+1. **Gymnasium 1.0+ API** - Modern 5-tuple dict-keyed observations
+2. **3-channel encoding** - `[type, color, state]` format (not 6-channel)
+3. **Agent class design** - Separate from WorldObj, cleaner architecture
+4. **pygame rendering** - Modern window system (not matplotlib)
+5. **Modular structure** - ~20 focused modules (not 1442-line monolith)
+
+### What We Built (Our Contributions)
+
+1. **Reproducibility fix** - Fixed critical global RNG bug
+2. **Numba JIT optimization** - 10-100× faster observation generation
+3. **Comprehensive tests** - 130 tests covering all functionality
+4. **Framework adapters** - RLlib, PettingZoo integration
+5. **Observation wrappers** - FullyObs, ImgObs, OneHot, SingleAgent
+---
+
+## What Changed from Upstream: The Full Story
+
+Showing how we combined the best of both packages:
+
+| Aspect | gym-multigrid (Fickinger 2020) | INI multigrid (Oguntola 2023) | **mosaic_multigrid (This Fork)** |
+|--------|-------------------------------|-------------------------------|----------------------------------|
+| **API** | Old Gym 4-tuple, list-based | Gymnasium 5-tuple, dict-keyed |  **Gymnasium 5-tuple, dict-keyed** (from INI) |
+| **Actions** | 8 (still=0..done=7) | 7 (left=0..done=6) |  **7 actions, no "still"** (from INI) |
+| **Observations** | `(view, view, 6)` list | `(view, view, 3)` dict |  **`(view, view, 3)` dict** (from INI) |
+| **view_size** | **3** (Soccer/Collect) | **7** (default) |  **3 (KEPT from gym-multigrid)** for competitive challenge |
+| **Game Logic** | **Soccer, Collect, team rewards** | Exploration tasks (no team games) |  **Soccer, Collect** (from gym-multigrid) |
+| **`reset()`** | `List[obs]` | `(Dict[obs], Dict[info])` |  **`(Dict[obs], Dict[info])`** (from INI) |
+| **`step()`** | `(List[obs], ndarray, bool, dict)` | `(Dict, Dict, Dict, Dict, Dict)` |  **5-tuple per-agent dicts** (from INI) |
+| **Render** | `render(mode='human')` param | `render_mode` constructor param |  **`render_mode` constructor** (from INI) |
+| **Seeding** | `env.seed(42)` + **broken global RNG** | `reset(seed=42)` + `self.np_random` |  **Fixed seeding** (from INI) + **bug fix** (ours) |
+| **Window** | matplotlib | pygame |  **pygame** (from INI) |
+| **Performance** | Pure Python loops | Pure Python |  **Numba JIT** (ours, 10-100× faster) |
+| **Structure** | 1442-line monolith | Modular package |  **~20 focused modules** (from INI) |
+| **Dependencies** | `gym>=0.9.6, numpy` | `gymnasium, numpy, pygame` |  **+ numba, aenum** (optimizations) |
+| **Tests** | Basic test script | Unknown |  **130 comprehensive tests** (ours) |
+| **Use Case** | Multi-agent team research | Single-agent exploration |  **Multi-agent competitive** with modern API |
+
+**Legend**:
+-  = What we adopted/built
+- Items from gym-multigrid: view_size=3, Soccer/Collect game mechanics
+- Items from INI multigrid: Gymnasium API, 3-channel encoding, pygame, modular structure
+- Our contributions: Reproducibility fix, Numba JIT, comprehensive tests, framework adapters
 
 ### Bugs Fixed
 
@@ -33,9 +73,9 @@ This fork is developed as part of the [MOSAIC](https://github.com/Abdulhamid97Mo
 ### SoccerGame
 
 <p align="center">
-  <img src="figures/soccer.png" width="200">
-  <img src="figures/soccer_2.png" width="200">
-  <img src="figures/soccer_4.png" width="200">
+  <img src="https://raw.githubusercontent.com/Abdulhamid97Mousa/mosaic_multigrid/main/figures/soccer.png" width="200">
+  <img src="https://raw.githubusercontent.com/Abdulhamid97Mousa/mosaic_multigrid/main/figures/soccer_2.png" width="200">
+  <img src="https://raw.githubusercontent.com/Abdulhamid97Mousa/mosaic_multigrid/main/figures/soccer_4.png" width="200">
 </p>
 
 Team-based competitive environment. Agents score by dropping the ball at the opposing team's goal. Supports ball passing, stealing, and zero-sum team rewards.
@@ -45,8 +85,8 @@ Team-based competitive environment. Agents score by dropping the ball at the opp
 ### CollectGame
 
 <p align="center">
-  <img src="figures/collect.png" width="200">
-  <img src="figures/collect_2.png" width="200">
+  <img src="https://raw.githubusercontent.com/Abdulhamid97Mousa/mosaic_multigrid/main/figures/collect.png" width="200">
+  <img src="https://raw.githubusercontent.com/Abdulhamid97Mousa/mosaic_multigrid/main/figures/collect_2.png" width="200">
 </p>
 
 Cooperative/competitive collection. Agents earn rewards for picking up same-color balls and penalties for different-color balls.
@@ -55,27 +95,36 @@ Cooperative/competitive collection. Agents earn rewards for picking up same-colo
 
 ## Installation
 
+### From PyPI (recommended)
+
+```bash
+pip install mosaic-multigrid
+
+# With optional framework adapters
+pip install mosaic-multigrid[rllib]       # Ray RLlib support
+pip install mosaic-multigrid[pettingzoo]  # PettingZoo support
+pip install mosaic-multigrid[dev]         # pytest
+```
+
+### From source
+
 ```bash
 git clone https://github.com/Abdulhamid97Mousa/mosaic_multigrid.git
 cd mosaic_multigrid
 pip install -e .
-
-# With optional framework adapters
-pip install -e ".[rllib]"       # Ray RLlib support
-pip install -e ".[pettingzoo]"  # PettingZoo support
-pip install -e ".[dev]"         # pytest
 ```
 
 ## Quick Start
 
 ```python
-from gym_multigrid.envs import SoccerGame4HEnv10x15N2
+from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2
 
 env = SoccerGame4HEnv10x15N2(render_mode='rgb_array')
 obs, info = env.reset(seed=42)
 
 # obs is a dict keyed by agent index: {0: {...}, 1: {...}, 2: {...}, 3: {...}}
 # Each agent's obs has 'image', 'direction', 'mission' keys
+print(obs[0]['image'].shape)  # (3, 3, 3) - partial view!
 
 actions = {i: env.action_space[i].sample() for i in range(env.num_agents)}
 obs, rewards, terminated, truncated, info = env.step(actions)
@@ -84,6 +133,100 @@ obs, rewards, terminated, truncated, info = env.step(actions)
 frame = env.render()  # Returns numpy array (H, W, 3)
 env.close()
 ```
+
+## Partial Observability
+
+**Agents have limited field of view!** We use **view_size=3** (from gym-multigrid) for competitive team games. This creates challenging coordination problems where agents can't see the entire field.
+
+### Why view_size=3?
+
+We **kept the small view size from gym-multigrid** for research continuity:
+-  **Challenging** - Forces team coordination and communication
+-  **Realistic** - Agents can't see everything (fog of war)
+-  **Research proven** - Comparable with Fickinger et al. (2020)
+
+We **adopted modern infrastructure from INI multigrid**:
+-  Gymnasium API, 3-channel encoding, pygame rendering, Numba JIT
+
+### Visual Comparison
+
+#### Agent View Size
+
+Each agent has **limited perception** - they only see a local grid around them, not the entire environment.
+
+#### Default View: 3×3 (mosaic_multigrid - Competitive)
+
+```
+Soccer environment (view_size=3):
+
+Full Grid (15×10):                               Agent 0's View (3×3):
+┌─────────────────────────────────┐              ┌──────┐
+│ W  W  W  W  W  W  W  W  W  W  W │              │ W W W│  ← Top row (walls)
+│ W  .  .  .  .  .  .  .  .  .  W │              │ . . .│  ← Middle row
+│ W  🔵→ .  .  .  .  ⚽ .  . .  W │              │ .🔵 .│  ← Agent at bottom-center looking up
+│ W  .  .  .  .  .  .  .  .  .  W │              └──────┘
+│ W  .  .  .  .  .  .  .  .  .  W │
+│ W  🟥 .  .  .  .  .  .  .  🟦 W │              Coverage: 9 cells (3×3)
+│ W  .  .  .  .  .  .  .  .  .  W │              Forward: 2 tiles
+│ W  .  .  .  .  .  .  .  .  .  W │              Sides: 1 tile each
+│ W  🔵 .  .  .  .  .  .  .  🔴 W │
+│ W  W  W  W  W  W  W  W  W  W  W │              ⚠️ CANNOT see ball! 
+└─────────────────────────────────┘              ⚠️ CANNOT see goals!
+                                                 ⚠️ CANNOT see teammates!
+Legend:
+🔵 Blue team  🔴 Red team  ⚽ Ball  🟥🟦 Goals  W=Wall  .=Empty
+```
+
+#### View Rotation
+
+**The view rotates with the agent!** The agent is always at the bottom-center, facing "up" in its own reference frame.
+
+```
+Agent facing RIGHT (direction=0):     Agent facing DOWN (direction=1):
+┌───────┐                              ┌───────┐
+│ . . . │ → Agent's forward            │ . A . │
+│ A . . │   view is to the right       │ . . . │
+│ . . . │   in the global grid         │ . . . │
+└───────┘                              └───────┘
+                                      ↓ Forward view is downward
+
+Agent facing LEFT (direction=2):      Agent facing UP (direction=3):
+┌───────┐                              ┌───────┐
+│ . . . │                              │ . . . │
+│ . . A │ ← Forward view is            │ . . . │
+│ . . . │   to the left                │ . A . |
+└───────┘                              └───────┘
+                                      ↑ Forward is upward
+```
+
+### Configurable View Size
+
+```python
+from mosaic_multigrid.envs import SoccerGameEnv
+
+# Default: 3×3 (competitive challenge)
+env = SoccerGameEnv(view_size=3, ...)
+obs, _ = env.reset()
+print(obs[0]['image'].shape)  # (3, 3, 3)
+
+# Match INI multigrid: 7×7 (easier)
+env = SoccerGameEnv(view_size=7, ...)
+obs, _ = env.reset()
+print(obs[0]['image'].shape)  # (7, 7, 3)
+```
+
+### Observation Format (Compatible with INI multigrid)
+
+- `obs[agent_id]['image']` shape: `(view_size, view_size, 3)`
+  - Channel 0: Object type (wall, ball, goal, agent, etc.)
+  - Channel 1: Object color (red, blue, green, etc.)
+  - Channel 2: Object state (open/closed door, agent direction)
+- `obs[agent_id]['direction']`: int (0=right, 1=down, 2=left, 3=up)
+- `obs[agent_id]['mission']`: Mission string
+
+**The agent is always at the bottom-center of its view**, looking forward. The view rotates with the agent's direction.
+
+📖 **See [PARTIAL_OBSERVABILITY.md](PARTIAL_OBSERVABILITY.md) for detailed visual diagrams and comparison with INI multigrid.**
 
 ### Reproducibility
 
