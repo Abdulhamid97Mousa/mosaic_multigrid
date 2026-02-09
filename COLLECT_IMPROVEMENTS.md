@@ -5,6 +5,8 @@
 
 This document explains the improvements made to the **Collect environments** (individual and team-based) in MOSAIC multigrid to fix critical bugs and optimize for reinforcement learning training.
 
+![Collect Environment — Base](figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
+
 ---
 
 ## 🚨 Critical Bug Fixed
@@ -111,6 +113,8 @@ Training efficiency: ✅ Excellent
 
 ### **Variant 1: CollectGame3HEnv10x10N3 (Individual Competition)**
 
+![Variant 1 — Individual 3-Agent Collect](figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png)
+
 **Setup:**
 - **3 agents** on **3 separate teams** (every agent for themselves)
 - **5 wildcard balls** (index=0, any agent can collect)
@@ -139,6 +143,8 @@ Example scores: Agent 0: +3, Agent 1: +1, Agent 2: +1 → Agent 0 wins!
 ---
 
 ### **Variant 2: CollectGame4HEnv10x10N2 (Team Competition 2v2)**
+
+![Variant 2 — Team 2v2 Collect](figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png)
 
 **Setup:**
 - **4 agents** on **2 teams** (2v2: Green vs Red)
@@ -202,54 +208,6 @@ Red:   -4 (collected 3 balls, zero-sum)
 
 ---
 
-## Training Configuration
-
-### **Recommended Setup**
-
-```python
-import gymnasium as gym
-
-# Individual competition (3 agents)
-env_individual = gym.make(
-    'MosaicMultiGrid-Collect-v0',
-    max_steps=300,           # Enough time to collect 5 balls
-    view_size=3,             # Partial observability
-    render_mode='rgb_array'
-)
-
-# Team competition (2v2)
-env_team = gym.make(
-    'MosaicMultiGrid-Collect2vs2-v0',
-    max_steps=400,           # Enough time to collect 7 balls
-    view_size=3,
-    render_mode='rgb_array'
-)
-
-# MAPPO for team variant (better coordination)
-from mappo import MAPPOTrainer
-
-trainer = MAPPOTrainer(
-    env=env_team,
-    num_agents=4,
-    num_envs=8,
-    total_timesteps=500_000,  # ~1-2 weeks for good performance
-    lr=3e-4,
-    gamma=0.99,
-)
-```
-
-### **Training Timeline (Single GPU)**
-
-| Phase | Episodes | Days | What Agents Learn |
-|-------|----------|------|-------------------|
-| Random | 0-20k | 1-2 | Basic controls, discover pickup |
-| Greedy | 20k-100k | 3-5 | Move to balls, collect efficiently |
-| Coverage | 100k-300k | 7-12 | Map coverage, avoid duplication |
-| Strategic | 300k-500k | 12-18 | Optimal positioning, blocking |
-
-**Total for competent play:** ~2-3 weeks
-
----
 
 ## Environment Naming - Complete Separation
 
@@ -380,21 +338,15 @@ and coordination to find the ball and opponents.
 
 ### Visual Comparison
 
-```
-Soccer (view_size=3):              Collect (view_size=7, OLD):
-+---+---+---+---+---+             +---+---+---+---+---+---+---+---+---+---+
-|   |   |   |   |   |             | . | . | . | . | . | . | . |   |   |   |
-+---+---+---+---+---+             +---+---+---+---+---+---+---+---+---+---+
-|   | x | x | x |   |             | . | . | . | . | . | . | . |   |   |   |
-+---+---+---+---+---+             +---+---+---+---+---+---+---+---+---+---+
-|   | x | A | x |   |             | . | . | . | . | . | . | . |   |   |   |
-+---+---+---+---+---+             +---+---+---+---+---+---+---+---+---+---+
-|   | x | x | x |   |             | . | . | . | A | . | . | . |   |   |   |
-+---+---+---+---+---+             +---+---+---+---+---+---+---+---+---+---+
-|   |   |   |   |   |             | . | . | . | . | . | . | . |   |   |   |
+**Before (view_size=7) — agent sees almost half the grid:**
 
-A = agent, x = visible, . = visible (7x7 view covers most of the grid)
-```
+![view_size=7 Bug — Collect](figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
+
+**After (view_size=3) — meaningful partial observability:**
+
+![view_size=3 Fixed — Collect 2v2 Enhanced](figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png)
+
+With `view_size=7` on a 10×10 grid, each agent's 7×7 view covers 49% of the board — partial observability is nearly meaningless. With `view_size=3`, the 3×3 view covers only 9%, requiring genuine exploration and coordination.
 
 ### Root Cause
 
