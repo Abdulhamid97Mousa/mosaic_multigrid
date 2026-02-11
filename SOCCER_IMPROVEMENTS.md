@@ -75,7 +75,7 @@ if self.team_scores[team] >= self.goals_to_win:
 ### **Bug #3: Observability - Can't See Who Has Ball**
 
 <p align="center">
-  <img src="figures/Agent_Cant_See_Who_Has_Ball_Bug_3.png" width="600">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Agent_Cant_See_Who_Has_Ball_Bug_3.png" width="600">
 </p>
 
 **Problem:**
@@ -179,7 +179,7 @@ direction = state_value % 100
 Green Agent's View (after fix):
 
 <p align="center">
-  <img src="figures/green_agent_view_has_ball.png" width="200">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/green_agent_view_has_ball.png" width="200">
 </p>
 
 ```
@@ -406,7 +406,7 @@ def _handle_pickup(self, agent_index, agent, rewards):
 ### **14x9 Playable Area (16x11 Total)**
 
 <p align="center">
-  <img src="figures/14×9_Playable_Area_16×11_Total.png" width="600">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/14×9_Playable_Area_16×11_Total.png" width="600">
 </p>
 
 Inspired by FIFA recommended pitch dimensions (105m x 68m = 1.54 ratio)

@@ -5,7 +5,7 @@
 A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-multigrid) by Arnaud Fickinger (2020), modernized to the Gymnasium API with Numba JIT-accelerated observations, reproducible seeding.
 
 <p align="center">
-  <img src="figures/before_after_comparison.png" width="800" alt="gym-multigrid vs mosaic_multigrid: ball-carrying observability and sport-specific court rendering">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/before_after_comparison.png" width="800" alt="gym-multigrid vs mosaic_multigrid: ball-carrying observability and sport-specific court rendering">
 </p>
 
 ## Design Philosophy: Best of Both Worlds
@@ -85,7 +85,7 @@ Showing how we combined the best of both packages:
 ### SoccerGame (IndAgObs -- Recommended)
 
 <p align="center">
-  <img src="figures/Gym-MosaicMultiGrid-Soccer-IndAgObs-v0.png" width="480">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Gym-MosaicMultiGrid-Soccer-IndAgObs-v0.png" width="480">
 </p>
 
 Team-based competitive environment with **FIFA-style field rendering**. Agents score by dropping the ball at the opposing team's goal. Features **teleport passing**, stealing with dual cooldown, ball respawn, and first-to-2-goals termination.
@@ -95,7 +95,7 @@ Team-based competitive environment with **FIFA-style field rendering**. Agents s
 ### CollectGame (Individual Competition)
 
 <p align="center">
-  <img src="figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png" width="300">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png" width="300">
 </p>
 
 Individual competitive collection. 3 agents compete individually to collect the most balls.
@@ -106,7 +106,7 @@ Individual competitive collection. 3 agents compete individually to collect the 
 ### Collect2vs2Game (Team-Based Collection)
 
 <p align="center">
-  <img src="figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png" width="400">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png" width="400">
 </p>
 
 Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect the most balls. Similar to Soccer but without goals — agents earn points directly by picking up balls. **7 balls ensures no draws!**
@@ -116,7 +116,7 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 ### BasketballGame (3vs3 -- New in v4.0.0)
 
 <p align="center">
-  <img src="figures/basketball_3vs3_render.png" width="480">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="480">
 </p>
 
 Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents score by dropping the ball at the opposing team's basket (goal on the baseline). Features **teleport passing**, stealing with dual cooldown, ball respawn, first-to-2-goals termination, and **basketball-court rendering** with three-point arcs, paint rectangles, and center circle.
@@ -258,7 +258,7 @@ Each agent has **limited perception** - they only see a local grid around them, 
 #### Default View: 3×3 (mosaic_multigrid — Competitive)
 
 <p align="center">
-  <img src="figures/Default_View_3×3_of_agents.png" width="700">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Default_View_3×3_of_agents.png" width="700">
 </p>
 
 Each agent sees only a **3×3 local window** around itself. Coverage: 9 cells. Forward: 2 tiles. Sides: 1 tile each.  
@@ -269,12 +269,12 @@ Note: With `view_size=3`, agents typically **cannot** see the ball, goals, or te
 **The view rotates with the agent!** The agent is always at the bottom-center, facing "up" in its own reference frame.
 
 <p align="center">
-  <img src="figures/Agent_facing_RIGHT_VIEW_ROTATION.png" width="340">
-  <img src="figures/Agent_facing_DOWN_VIEW_ROTATION.png" width="340">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Agent_facing_RIGHT_VIEW_ROTATION.png" width="340">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Agent_facing_DOWN_VIEW_ROTATION.png" width="340">
 </p>
 <p align="center">
-  <img src="figures/Agent_facing_LEFT_VIEW_ROTATION.png" width="340">
-  <img src="figures/Agent_facing_UP_VIEW_ROTATION.png" width="340">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Agent_facing_LEFT_VIEW_ROTATION.png" width="340">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Agent_facing_UP_VIEW_ROTATION.png" width="340">
 </p>
 
 ### Configurable View Size

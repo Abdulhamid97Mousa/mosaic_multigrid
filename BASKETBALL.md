@@ -5,7 +5,7 @@
 A 3-on-3 basketball game environment for multi-agent reinforcement learning research. Teams score by carrying the ball to the opposing team's hoop on the baseline. Built on top of the MOSAIC multigrid engine with the same mechanics as Soccer IndAgObs (teleport passing, steal cooldown, ball respawn, first-to-N-goals termination).
 
 <p align="center">
-  <img src="figures/basketball_3vs3_render.png" width="600">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="600">
 </p>
 
 ---
@@ -67,7 +67,7 @@ env.close()
 ### 17x9 Playable Area (19x11 Total)
 
 <p align="center">
-  <img src="figures/basketball_3vs3_render.png" width="600">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="600">
 </p>
 
 

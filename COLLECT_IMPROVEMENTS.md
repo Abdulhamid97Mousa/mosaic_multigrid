@@ -5,7 +5,7 @@
 
 This document explains the improvements made to the **Collect environments** (individual and team-based) in MOSAIC multigrid to fix critical bugs and optimize for reinforcement learning training.
 
-![Collect Environment -- Base](figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
+![Collect Environment -- Base](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
 
 ---
 
@@ -113,7 +113,7 @@ Training efficiency: Excellent
 
 ### **Variant 1: CollectGame3HEnv10x10N3 (Individual Competition)**
 
-![Variant 1 -- Individual 3-Agent Collect](figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png)
+![Variant 1 -- Individual 3-Agent Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png)
 
 **Setup:**
 - **3 agents** on **3 separate teams** (every agent for themselves)
@@ -144,7 +144,7 @@ Example scores: Agent 0: +3, Agent 1: +1, Agent 2: +1 -> Agent 0 wins!
 
 ### **Variant 2: CollectGame4HEnv10x10N2 (Team Competition 2v2)**
 
-![Variant 2 -- Team 2v2 Collect](figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png)
+![Variant 2 -- Team 2v2 Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png)
 
 **Setup:**
 - **4 agents** on **2 teams** (2v2: Green vs Red)
@@ -392,11 +392,11 @@ and coordination to find the ball and opponents.
 
 **Before (view_size=7) -- agent sees almost half the grid:**
 
-![view_size=7 Bug -- Collect](figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
+![view_size=7 Bug -- Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
 
 **After (view_size=3) -- meaningful partial observability:**
 
-![view_size=3 Fixed -- Collect 2v2 Enhanced](figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png)
+![view_size=3 Fixed -- Collect 2v2 Enhanced](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png)
 
 With `view_size=7` on a 10x10 grid, each agent's 7x7 view covers 49% of the board -- partial observability is nearly meaningless. With `view_size=3`, the 3x3 view covers only 9%, requiring genuine exploration and coordination.
 
