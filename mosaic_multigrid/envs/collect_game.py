@@ -61,6 +61,17 @@ class CollectGameEnv(MultiGridEnv):
         self.balls_reward = balls_reward or [1.0]
         self.zero_sum = zero_sum
 
+        if len(self.num_balls) != len(self.balls_index):
+            raise ValueError(
+                f"num_balls ({len(self.num_balls)}) and balls_index "
+                f"({len(self.balls_index)}) must have the same length"
+            )
+        if len(self.num_balls) != len(self.balls_reward):
+            raise ValueError(
+                f"num_balls ({len(self.num_balls)}) and balls_reward "
+                f"({len(self.balls_reward)}) must have the same length"
+            )
+
         agents_index = agents_index or []
         agents = [
             Agent(
@@ -221,21 +232,25 @@ class CollectGame4HEnv10x10N2(CollectGameEnv):
 
 
 # -----------------------------------------------------------------------
-# Enhanced variants (v1.1.0) - Fixed for RL training
+# IndAgObs variants (Individual Agent Observations) - Fixed for RL training
 # -----------------------------------------------------------------------
 
-class CollectGameEnhancedEnv(CollectGameEnv):
-    """Enhanced Collect game with natural termination when all balls collected.
+class CollectGameIndAgObsEnv(CollectGameEnv):
+    """IndAgObs Collect game with natural termination when all balls collected.
 
     This is the RECOMMENDED version for RL training. Fixes the bug where
     episodes ran for 10,000 steps even after all balls were collected.
 
     Key improvements over CollectGameEnv:
-    - ✅ Episode terminates when all balls collected (natural termination)
-    - ✅ 35× faster training (300 vs 10,000 steps average)
-    - ✅ No wasted computation
-    - ✅ Clear winner determination
+    - Episode terminates when all balls collected (natural termination)
+    - ~35x faster training (300 vs 10,000 steps average)
+    - No wasted computation
+    - Clear winner determination
     """
+
+    def _gen_grid(self, width: int, height: int):
+        super()._gen_grid(width, height)
+        self._remaining_balls = sum(self.num_balls)
 
     def _handle_pickup(
         self,
@@ -247,6 +262,7 @@ class CollectGameEnhancedEnv(CollectGameEnv):
         Pickup with team-based ball matching and termination check.
 
         Episode terminates when all balls are collected.
+        Uses O(1) counter instead of scanning the full grid.
         """
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
@@ -257,22 +273,14 @@ class CollectGameEnhancedEnv(CollectGameEnv):
                 self.grid.set(*fwd_pos, None)
                 self._team_reward(agent.team_index, rewards, fwd_obj.reward)
 
-                # NEW: Check if all balls collected (termination condition)
-                remaining_balls = sum(
-                    1 for x in range(self.grid.width)
-                    for y in range(self.grid.height)
-                    if self.grid.get(x, y) and self.grid.get(x, y).type.value == 'ball'
-                )
-
-                if remaining_balls == 0:
-                    # All balls collected! Episode terminates
-                    # Winner determined by cumulative rewards
-                    for agent in self.agents:
-                        agent.state.terminated = True
+                self._remaining_balls -= 1
+                if self._remaining_balls <= 0:
+                    for a in self.agents:
+                        a.state.terminated = True
 
 
-class CollectGame3HEnhancedEnv10x10N3(CollectGameEnhancedEnv):
-    """Enhanced 3-agent individual competition with natural termination.
+class CollectGame3HIndAgObsEnv10x10N3(CollectGameIndAgObsEnv):
+    """IndAgObs 3-agent individual competition with natural termination.
 
     RECOMMENDED for RL training. Terminates when all 5 balls collected.
     """
@@ -291,8 +299,8 @@ class CollectGame3HEnhancedEnv10x10N3(CollectGameEnhancedEnv):
         )
 
 
-class CollectGame4HEnhancedEnv10x10N2(CollectGameEnhancedEnv):
-    """Enhanced 2v2 team competition with natural termination.
+class CollectGame4HIndAgObsEnv10x10N2(CollectGameIndAgObsEnv):
+    """IndAgObs 2v2 team competition with natural termination.
 
     RECOMMENDED for RL training. Terminates when all 7 balls collected.
     7 balls (odd number) prevents draws!

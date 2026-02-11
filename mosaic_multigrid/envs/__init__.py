@@ -10,17 +10,63 @@ import gymnasium as gym
 from .soccer_game import (
     SoccerGameEnv,
     SoccerGame4HEnv10x15N2,
-    SoccerGameEnhancedEnv,
-    SoccerGame4HEnhancedEnv16x11N2,
+    SoccerGameIndAgObsEnv,
+    SoccerGame4HIndAgObsEnv16x11N2,
 )
 from .collect_game import (
     CollectGameEnv,
     CollectGame3HEnv10x10N3,  # 3 agents, individual competition
     CollectGame4HEnv10x10N2,  # 4 agents, 2v2 teams
-    CollectGameEnhancedEnv,
-    CollectGame3HEnhancedEnv10x10N3,  # 3 agents, enhanced with natural termination
-    CollectGame4HEnhancedEnv10x10N2,  # 4 agents 2v2, enhanced with natural termination
+    CollectGameIndAgObsEnv,
+    CollectGame3HIndAgObsEnv10x10N3,  # 3 agents, IndAgObs with natural termination
+    CollectGame4HIndAgObsEnv10x10N2,  # 4 agents 2v2, IndAgObs with natural termination
 )
+from .basketball_game import (
+    BasketballGameEnv,
+    BasketballGameIndAgObsEnv,
+    BasketballGame6HIndAgObsEnv19x11N3,
+)
+from ..wrappers import TeamObsWrapper
+
+
+# -----------------------------------------------------------------------
+# TeamObs environment classes (SMAC-style teammate awareness)
+#
+# These thin wrappers compose IndAgObs base envs with TeamObsWrapper,
+# adding structured teammate features (positions, directions, has_ball)
+# to each agent's observation dict. Follows the observation augmentation
+# pattern from SMAC (Samvelyan et al., 2019).
+#
+# Only defined for team-based environments (2v2). The 3-agent Collect
+# has agents_index=[1,2,3] (each agent = own team, no teammates).
+# -----------------------------------------------------------------------
+
+class SoccerTeamObsEnv(TeamObsWrapper):
+    """Soccer 2v2 (16x11, IndAgObs) with SMAC-style teammate awareness."""
+    # Class-level metadata required by gymnasium.make() -- gym.Wrapper defines
+    # metadata as a @property (instance proxy), which breaks pre-instantiation
+    # checks.  Override with the base env's metadata dict.
+    metadata = SoccerGame4HIndAgObsEnv16x11N2.metadata
+
+    def __init__(self, **kwargs):
+        super().__init__(SoccerGame4HIndAgObsEnv16x11N2(**kwargs))
+
+
+class Collect2vs2TeamObsEnv(TeamObsWrapper):
+    """Collect 2v2 (10x10, IndAgObs) with SMAC-style teammate awareness."""
+    metadata = CollectGame4HIndAgObsEnv10x10N2.metadata
+
+    def __init__(self, **kwargs):
+        super().__init__(CollectGame4HIndAgObsEnv10x10N2(**kwargs))
+
+
+class Basketball3vs3TeamObsEnv(TeamObsWrapper):
+    """Basketball 3vs3 (19x11, IndAgObs) with SMAC-style teammate awareness."""
+    metadata = BasketballGame6HIndAgObsEnv19x11N3.metadata
+
+    def __init__(self, **kwargs):
+        super().__init__(BasketballGame6HIndAgObsEnv19x11N3(**kwargs))
+
 
 # -----------------------------------------------------------------------
 # Configuration registry (env_name -> (env_cls, default_kwargs))
@@ -35,11 +81,32 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-Collect2vs2-v0': (CollectGame4HEnv10x10N2, {}),  # 4-agent teams
 
     # -----------------------------------------------------------------------
-    # Enhanced environments (v1.1.0) - RECOMMENDED for RL training
+    # IndAgObs environments (v1.1.0) - RECOMMENDED for RL training
     # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-Enhanced-v0': (SoccerGame4HEnhancedEnv16x11N2, {}),
-    'MosaicMultiGrid-Collect-Enhanced-v0': (CollectGame3HEnhancedEnv10x10N3, {}),
-    'MosaicMultiGrid-Collect2vs2-Enhanced-v0': (CollectGame4HEnhancedEnv10x10N2, {}),
+    'MosaicMultiGrid-Soccer-IndAgObs-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
+    'MosaicMultiGrid-Collect-IndAgObs-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
+    'MosaicMultiGrid-Collect2vs2-IndAgObs-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
+
+    # -----------------------------------------------------------------------
+    # TeamObs environments (v2.0.0) - SMAC-style teammate awareness
+    #
+    # Build on IndAgObs base envs + TeamObsWrapper. Each agent receives
+    # its local 3x3 image UNCHANGED, plus structured teammate features:
+    #   teammate_positions (N,2), teammate_directions (N,), teammate_has_ball (N,)
+    # Only for team-based (2v2) environments.
+    # -----------------------------------------------------------------------
+    'MosaicMultiGrid-Soccer-TeamObs-v0': (SoccerTeamObsEnv, {}),
+    'MosaicMultiGrid-Collect2vs2-TeamObs-v0': (Collect2vs2TeamObsEnv, {}),
+
+    # -----------------------------------------------------------------------
+    # Basketball environments (v3.0.3) - 3vs3 on basketball court
+    #
+    # 19x11 grid (17x9 playable), 3vs3 teams, basketball-court rendering.
+    # Same mechanics as Soccer IndAgObs (teleport pass, steal cooldown,
+    # ball respawn, first-to-2-goals termination).
+    # -----------------------------------------------------------------------
+    'MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0': (BasketballGame6HIndAgObsEnv19x11N3, {}),
+    'MosaicMultiGrid-Basketball-3vs3-TeamObs-v0': (Basketball3vs3TeamObsEnv, {}),
 }
 
 # -----------------------------------------------------------------------

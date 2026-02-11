@@ -1,10 +1,12 @@
 # mosaic_multigrid
 
-**Research-grade multi-agent gridworld environments for reproducible RL experiments.**
+**Multi-agent gridworld environments for reproducible RL experiments.**
 
-A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-multigrid) by Arnaud Fickinger (2020), modernized to the Gymnasium API with Numba JIT-accelerated observations, reproducible seeding, and multi-agent framework adapters.
+A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-multigrid) by Arnaud Fickinger (2020), modernized to the Gymnasium API with Numba JIT-accelerated observations, reproducible seeding.
 
-This fork is developed as part of the [MOSAIC](https://github.com/Abdulhamid97Mousa/MOSAIC) project (Multi-Agent Orchestration System).
+<p align="center">
+  <img src="figures/before_after_comparison.png" width="800" alt="gym-multigrid vs mosaic_multigrid: ball-carrying observability and sport-specific court rendering">
+</p>
 
 ## Design Philosophy: Best of Both Worlds
 
@@ -14,24 +16,25 @@ We kept the **challenging partial observability** (`view_size=3`) that makes Soc
 
 ### What We Kept from gym-multigrid (Fickinger 2020)
 
-1. **Partial observability** - `view_size=3` for Soccer/Collect (challenging team coordination)
+1. **Partial observability** - `view_size=3` for `SoccerGame4HEnv10x15N2` and `CollectGameEnv` (challenging team coordination)
 2. **Game mechanics** - Ball passing, stealing, scoring, team rewards
 3. **Research continuity** - Comparable with original papers
 
 ### What We Adopted from INI multigrid (2022+)
-1. **Gymnasium 1.0+ API** - Modern 5-tuple dict-keyed observations
-2. **3-channel encoding** - `[type, color, state]` format (not 6-channel)
-3. **Agent class design** - Separate from WorldObj, cleaner architecture
-4. **pygame rendering** - Modern window system (not matplotlib)
-5. **Modular structure** - ~20 focused modules (not 1442-line monolith)
+- **Gymnasium 1.0+ API** - Modern 5-tuple dict-keyed observations
+- **3-channel encoding** - `[type, color, state]` format (not 6-channel)
+- **Agent class design** - Separate from WorldObj, cleaner architecture
+- **pygame rendering** - Modern window system (not matplotlib)
+- **Modular structure** - ~20 focused modules (not 1442-line monolith)
 
 ### What We Built (Our Contributions)
 
 1. **Reproducibility fix** - Fixed critical global RNG bug
-2. **Numba JIT optimization** - 10-100× faster observation generation
-3. **Comprehensive tests** - 130 tests covering all functionality
-4. **Framework adapters** - RLlib, PettingZoo integration
-5. **Observation wrappers** - FullyObs, ImgObs, OneHot, SingleAgent
+2. **Numba JIT optimization** - 10-100x faster observation generation
+3. **Comprehensive tests** - 130+ tests covering all functionality
+4. **Framework adapters** - PettingZoo Parallel, AEC (Environment Agent Cycle) integration
+5. **Observation wrappers** - FullyObs, ImgObs, OneHot, SingleAgent, TeamObs (SMAC-style)
+6. **TeamObs environments** - SMAC-style teammate awareness for team coordination research
 ---
 
 ## What Changed from Upstream: The Full Story
@@ -55,6 +58,7 @@ Showing how we combined the best of both packages:
 | **Structure** | 1442-line monolith | Modular package |  **~20 focused modules** (from INI) |
 | **Dependencies** | `gym>=0.9.6, numpy` | `gymnasium, numpy, pygame` |  **+ numba, aenum** (optimizations) |
 | **Tests** | Basic test script | Unknown |  **130 comprehensive tests** (ours) |
+| **PettingZoo** | None | Parallel only (ParallelEnv) | **Parallel + AEC** (ours) via `pettingzoo.utils.conversions` |
 | **Use Case** | Multi-agent team research | Single-agent exploration |  **Multi-agent competitive** with modern API |
 
 **Observation Space Notation**: The format is `(height, width, channels)` where:
@@ -65,11 +69,10 @@ Showing how we combined the best of both packages:
 
 **Legend**:
 
-
--  = What we adopted/built
+- **Bold** in the mosaic_multigrid column = What we adopted or built
 - Items from gym-multigrid: view_size=3, Soccer/Collect game mechanics
 - Items from INI multigrid: Gymnasium API, 3-channel encoding, pygame, modular structure
-- Our contributions: Reproducibility fix, Numba JIT, comprehensive tests, framework adapters
+- Our contributions: Reproducibility fix, Numba JIT, comprehensive tests, PettingZoo adapters
 
 ### Bugs Fixed
 
@@ -79,20 +82,20 @@ Showing how we combined the best of both packages:
 
 ## Included Environments
 
-### SoccerGame (Enhanced — Recommended)
+### SoccerGame (IndAgObs -- Recommended)
 
 <p align="center">
-  <img src="figures/Gym-MosaicMultiGrid-Soccer-Enhanced-v0.png" width="480">
+  <img src="figures/Gym-MosaicMultiGrid-Soccer-IndAgObs-v0.png" width="480">
 </p>
 
-Team-based competitive environment. Agents score by dropping the ball at the opposing team's goal. Features **teleport passing**, stealing with dual cooldown, ball respawn, and first-to-2-goals termination.
+Team-based competitive environment with **FIFA-style field rendering**. Agents score by dropping the ball at the opposing team's goal. Features **teleport passing**, stealing with dual cooldown, ball respawn, and first-to-2-goals termination.
 
-**Recommended variant:** `SoccerGame4HEnhancedEnv16x11N2` — 4 agents (2v2), 16×11 grid (FIFA ratio), 1 ball, zero-sum.
+**Recommended variant:** `SoccerGame4HIndAgObsEnv16x11N2` — 4 agents (2v2), 16x11 grid (FIFA ratio), 1 ball, zero-sum.
 
 ### CollectGame (Individual Competition)
 
 <p align="center">
-  <img src="figures/Gym-MosaicMultiGrid-Collect-Enhanced-v0.png" width="300">
+  <img src="figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png" width="300">
 </p>
 
 Individual competitive collection. 3 agents compete individually to collect the most balls.
@@ -103,16 +106,27 @@ Individual competitive collection. 3 agents compete individually to collect the 
 ### Collect2vs2Game (Team-Based Collection)
 
 <p align="center">
-  <img src="figures/Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png" width="400">
+  <img src="figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png" width="400">
 </p>
 
 Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect the most balls. Similar to Soccer but without goals — agents earn points directly by picking up balls. **7 balls ensures no draws!**
 
 **Default variant:** `CollectGame4HEnv10x10N2` — 4 agents (2v2), 10×10 grid, 7 wildcard balls.
 
+### BasketballGame (3vs3 -- New in v4.0.0)
+
+<p align="center">
+  <img src="figures/basketball_3vs3_render.png" width="480">
+</p>
+
+Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents score by dropping the ball at the opposing team's basket (goal on the baseline). Features **teleport passing**, stealing with dual cooldown, ball respawn, first-to-2-goals termination, and **basketball-court rendering** with three-point arcs, paint rectangles, and center circle.
+
+**IndAgObs variant:** `BasketballGame6HIndAgObsEnv19x11N3` — 6 agents (3vs3), 19x11 grid, 1 ball, zero-sum.
+**TeamObs variant:** `Basketball3vs3TeamObsEnv` — IndAgObs + SMAC-style teammate awareness (2 teammates per agent).
+
 ---
 
-## Enhanced Environments (v1.1.0)
+## Enhanced Environments (v4.0.0)
 
 **IMPORTANT:** We've fixed critical bugs in Soccer and Collect environments! The original environments are kept for backward compatibility, but **Enhanced variants are RECOMMENDED for all new RL research.**
 
@@ -120,55 +134,77 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 
 | Environment | Status | Key Improvements |
 |------------|--------|-----------------|
-| **MosaicMultiGrid-Soccer-Enhanced-v0** | ✅ Recommended | Ball respawns after goals, first-to-2-goals termination, dual cooldown on stealing, 16×11 FIFA aspect ratio, 50× faster training |
-| **MosaicMultiGrid-Collect-Enhanced-v0** | ✅ Recommended | Natural termination when all balls collected, 35× faster training (300 vs 10,000 steps) |
-| **MosaicMultiGrid-Collect2vs2-Enhanced-v0** | ✅ Recommended | Natural termination, 7 balls (odd number prevents draws), team coordination |
-| MosaicMultiGrid-Soccer-v0 | ⚠️ Deprecated | Ball disappears after scoring, no termination, runs 10,000 steps always |
-| MosaicMultiGrid-Collect-v0 | ⚠️ Deprecated | No termination after all balls collected, wastes computation |
+| **MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0** | New (v4.0.0) | 3vs3 basketball, 19x11 court, teleport passing, basketball-court rendering |
+| **MosaicMultiGrid-Basketball-3vs3-TeamObs-v0** | New (v4.0.0) | Basketball 3vs3 + SMAC-style teammate awareness (2 teammates per agent) |
+| **MosaicMultiGrid-Soccer-TeamObs-v0** | New (v4.0.0) | Soccer IndAgObs + SMAC-style teammate awareness (positions, directions, has_ball) |
+| **MosaicMultiGrid-Collect2vs2-TeamObs-v0** | New (v4.0.0) | Collect 2v2 IndAgObs + SMAC-style teammate awareness |
+| **MosaicMultiGrid-Soccer-IndAgObs-v0** | New (v4.0.0) | Ball respawns after goals, first-to-2-goals termination, dual cooldown on stealing, 16x11 FIFA aspect ratio |
+| **MosaicMultiGrid-Collect-IndAgObs-v0** | New (v4.0.0) | Natural termination when all balls collected, 35x faster training (300 vs 10,000 steps) |
+| **MosaicMultiGrid-Collect2vs2-IndAgObs-v0** | New (v4.0.0) | Natural termination, 7 balls (odd number prevents draws), team coordination |
+| MosaicMultiGrid-Soccer-v0 | Deprecated | Ball disappears after scoring, no termination, runs 10,000 steps always |
+| MosaicMultiGrid-Collect-v0 | Deprecated | No termination signal after all balls collected, wastes computation |
+| MosaicMultiGrid-Collect2vs2-v0 | Deprecated | No termination signal after all balls collected |
 
 ### Critical Bugs Fixed
 
 **Soccer Environment:**
-- ❌ **Bug**: Ball disappears after scoring and never respawns → ✅ **Fixed**: Ball respawns at random location
-- ❌ **Bug**: No natural termination (always runs 10,000 steps) → ✅ **Fixed**: First team to 2 goals wins
-- ❌ **Bug**: Agents can't see who is carrying ball → ✅ **Fixed**: STATE channel encoding + visual overlay
-- ❌ **Bug**: Infinite stealing exploit (no cooldown) → ✅ **Fixed**: 10-step dual cooldown for both stealer and victim
+- **Bug**: Ball disappears after scoring and never respawns -> 
+ **`FIXED:`** Ball respawns at random location
+- **Bug**: No natural termination (always runs 10,000 steps) -> **`FIXED:`** First team to 2 goals wins
+- **Bug**: Agents can't see who is carrying ball -> **`FIXED:`** STATE channel encoding + visual overlay
+- **Bug**: Infinite stealing exploit (no cooldown) -> **`FIXED:`** 10-step dual cooldown for both stealer and victim
 
 **Collect Environment:**
-- ❌ **Bug**: No termination when all balls collected (wastes 95% of computation) → ✅ **Fixed**: Natural termination when done
-- ✅ **Result**: **35× faster training** (300 vs 10,000 steps per episode)
+- **Bug**: No termination signal when all balls collected (wastes 95% of computation) -> **`FIXED:`** termination signal emitted when done
+- **Result**: **35× faster training** (300 vs 10,000 steps per episode)
+
+
+## TeamObs Environments (v4.0.0) -- SMAC-Style Teammate Awareness
+
+**For team coordination research**, TeamObs variants add structured teammate
+features to each agent's observation dict. This follows the standard MARL
+observation augmentation pattern established by SMAC (Samvelyan et al., 2019).
+
+### Why TeamObs?
+
+On a 16x11 field (Soccer) or 10x10 field (Collect) with `view_size=3`, each
+agent sees only **7-9% of the grid**. Teammates are almost never visible in
+the 3x3 local window. Without TeamObs:
+
+- Passing is **blind** (teleport to random teammate, no position knowledge)
+- Agents cannot coordinate coverage (both may search the same area)
+- Team strategies are limited to independent exploration
+
+With TeamObs, each agent receives its local view **unchanged**, plus:
+
+| Feature | Shape | Description |
+|---------|-------|-------------|
+| `teammate_positions` | (N, 2) int64 | Relative (dx, dy) from self to each teammate |
+| `teammate_directions` | (N,) int64 | Direction each teammate faces (0-3) |
+| `teammate_has_ball` | (N,) int64 | 1 if teammate carries ball, 0 otherwise |
+
+Where N = number of teammates per agent (1 in 2v2 environments, 2 in 3vs3 Basketball).
+
+### Design Rationale
+
+This follows the observation augmentation pattern from:
+
+> Samvelyan, M., Rashid, T., de Witt, C. S., et al. (2019).
+> "The StarCraft Multi-Agent Challenge." CoRR, abs/1902.04043.
+
+In SMAC, each agent receives its local view plus structured ally features
+(relative positions, health, unit type). We adapt this for gridworld
+environments. Teammate features are **environment-level** observation
+augmentation -- the RL algorithm decides what to do with the extra
+information.
+
+**Not applicable to:** `MosaicMultiGrid-Collect-Enhanced-v0` (3 agents, each
+on its own team with `agents_index=[1,2,3]`, so N=0 teammates).
 
 ### Documentation
 
-- **[SOCCER_IMPROVEMENTS.md](SOCCER_IMPROVEMENTS.md)** — Complete Soccer bug analysis, fixes, mechanics (passing, stealing, cooldown), map layout, training timeline
-- **[COLLECT_IMPROVEMENTS.md](COLLECT_IMPROVEMENTS.md)** — Collect bug fix, 35× speedup analysis, training efficiency comparison
-
-### Quick Start with Enhanced Environments
-
-```python
-import gymnasium as gym
-
-# Soccer Enhanced: 2v2, FIFA aspect ratio, first to 2 goals wins
-env = gym.make('MosaicMultiGrid-Soccer-Enhanced-v0', render_mode='rgb_array')
-
-# Collect Enhanced (Individual): 3 agents, terminates when all 5 balls collected
-env = gym.make('MosaicMultiGrid-Collect-Enhanced-v0', render_mode='rgb_array')
-
-# Collect Enhanced (2v2): 4 agents, 7 balls (odd = no draws)
-env = gym.make('MosaicMultiGrid-Collect2vs2-Enhanced-v0', render_mode='rgb_array')
-
-obs, info = env.reset(seed=42)
-
-for step in range(500):  # Much shorter episodes!
-    actions = {i: policy(obs[i]) for i in range(env.num_agents)}
-    obs, rewards, terminated, truncated, info = env.step(actions)
-
-    if terminated[0]:  # ✅ Natural termination!
-        print(f"Episode finished in {step} steps")
-        break
-
-env.close()
-```
+- **[SOCCER_IMPROVEMENTS.md](SOCCER_IMPROVEMENTS.md)** -- Full Soccer environment analysis, TeamObs design rationale, SMAC citation
+- **[COLLECT_IMPROVEMENTS.md](COLLECT_IMPROVEMENTS.md)** -- Collect environment analysis, TeamObs for 2v2 variant
 
 ---
 
@@ -178,11 +214,6 @@ env.close()
 
 ```bash
 pip install mosaic-multigrid
-
-# With optional framework adapters
-pip install mosaic-multigrid[rllib]       # Ray RLlib support
-pip install mosaic-multigrid[pettingzoo]  # PettingZoo support
-pip install mosaic-multigrid[dev]         # pytest
 ```
 
 ### From source
@@ -193,49 +224,14 @@ cd mosaic_multigrid
 pip install -e .
 ```
 
-## Quick Start
-
-### Recommended: Enhanced Environments (v1.1.0)
-
-```python
-import gymnasium as gym
-
-# ✅ Soccer Enhanced: Ball respawns, first to 2 goals, 200 steps max
-env = gym.make('MosaicMultiGrid-Soccer-Enhanced-v0', render_mode='rgb_array')
-
-# ✅ Collect Enhanced (Individual): Terminates when all 5 balls collected
-env = gym.make('MosaicMultiGrid-Collect-Enhanced-v0', render_mode='rgb_array')
-
-# ✅ Collect Enhanced (2v2): Terminates when all 7 balls collected
-env = gym.make('MosaicMultiGrid-Collect2vs2-Enhanced-v0', render_mode='rgb_array')
-
-obs, info = env.reset(seed=42)
-
-# obs is a dict keyed by agent index: {0: {...}, 1: {...}, ...}
-# Each agent's obs has 'image', 'direction', 'mission' keys
-print(obs[0]['image'].shape)  # (3, 3, 3) - partial view!
-
-for step in range(500):
-    actions = {i: env.action_space[i].sample() for i in range(env.num_agents)}
-    obs, rewards, terminated, truncated, info = env.step(actions)
-
-    # Enhanced environments terminate naturally!
-    if terminated[0]:
-        print(f"✅ Episode finished in {step} steps (natural termination)")
-        break
-
-# Render RGB frame
-frame = env.render()  # Returns numpy array (H, W, 3)
-env.close()
-```
 
 ### Original Environments (Backward Compatibility)
 
 ```python
-# ⚠️ Original Soccer: Ball disappears, no termination (10,000 steps always)
+#Original Soccer: Ball disappears, no termination (10,000 steps always)
 env = gym.make('MosaicMultiGrid-Soccer-v0', render_mode='rgb_array')
 
-# ⚠️ Original Collect: No termination after balls collected (10,000 steps always)
+#Original Collect: No termination after balls collected (10,000 steps always)
 env = gym.make('MosaicMultiGrid-Collect-v0', render_mode='rgb_array')
 ```
 
@@ -266,7 +262,7 @@ Each agent has **limited perception** - they only see a local grid around them, 
 </p>
 
 Each agent sees only a **3×3 local window** around itself. Coverage: 9 cells. Forward: 2 tiles. Sides: 1 tile each.  
-⚠️ With `view_size=3`, agents typically **cannot** see the ball, goals, or teammates — forcing team coordination strategies.
+Note: With `view_size=3`, agents typically **cannot** see the ball, goals, or teammates — forcing team coordination strategies.
 
 #### View Rotation
 
@@ -313,7 +309,7 @@ print(obs[0]['image'].shape)  # (7, 7, 3)
 
 **The agent is always at the bottom-center of its view**, looking forward. The view rotates with the agent's direction.
 
-#### 🎯 Ball Carrying Observability Enhancement
+#### Ball Carrying Observability Enhancement
 
 **Key Feature**: Agents can now see when **other agents are carrying the ball**!
 
@@ -337,16 +333,16 @@ direction = state % 100         # 1 (down)
 - **Zero memory overhead** - still 3 channels, still uint8 values
 
 **Before this fix**:
-- ❌ Agents could NOT see if others had the ball
-- ❌ Required memory architectures (LSTM) to track ball possession
-- ❌ Made stealing/defense strategies nearly impossible
+- Agents could NOT see if others had the ball
+- Required memory architectures (LSTM) to track ball possession
+- Made stealing/defense strategies nearly impossible
 
 **After this fix**:
-- ✅ Agents CAN see who has the ball in their view
-- ✅ Enables reactive defense strategies without memory
-- ✅ Faster training, better decision-making
+- Agents CAN see who has the ball in their view
+- Enables reactive defense strategies without memory
+- Faster training, better decision-making
 
-📖 **See [PARTIAL_OBSERVABILITY.md](PARTIAL_OBSERVABILITY.md) for detailed visual diagrams and comparison with INI multigrid.**
+See:**See [PARTIAL_OBSERVABILITY.md](PARTIAL_OBSERVABILITY.md) for detailed visual diagrams and comparison with INI multigrid.**
 
 ### Reproducibility
 
@@ -373,17 +369,17 @@ Understanding when and how episodes end is crucial for training RL agents. Follo
 
 ### Environment-Specific Criteria
 
-#### Soccer Enhanced (MosaicMultiGrid-Soccer-Enhanced-v0) ✅ RECOMMENDED
+#### Soccer Enhanced (MosaicMultiGrid-Soccer-Enhanced-v0) RECOMMENDED
 
 | Criterion | Condition |
 |-----------|-----------|
-| **Terminated** | ✅ When any team scores 2 goals (first-to-win) |
-| **Truncated** | ✅ When `max_steps >= 200` (configurable) |
+| **Terminated** |When any team scores 2 goals (first-to-win) |
+| **Truncated** |When `max_steps >= 200` (configurable) |
 | **Winning Condition** | First team to score `goals_to_win` (default: 2) wins |
 | **Scoring Mechanism** | Drop ball at opponent's ObjectGoal: +1 to scoring team, -1 to other team (zero-sum) |
-| **Ball Respawn** | ✅ Ball respawns at random location after each goal |
+| **Ball Respawn** |Ball respawns at random location after each goal |
 | **Episode Length** | Variable (terminates when team wins, or truncates at 200 steps) |
-| **Cooldown** | ✅ 10-step dual cooldown on stealing (both stealer and victim) |
+| **Cooldown** |10-step dual cooldown on stealing (both stealer and victim) |
 
 **Design rationale**: Enhanced Soccer provides **natural termination** when a team wins, significantly reducing training time (~50× faster). Ball respawns after each goal to keep gameplay continuous.
 
@@ -395,34 +391,32 @@ for step in range(200):
     actions = {i: agent_policy(obs[i]) for i in range(4)}
     obs, rewards, terminated, truncated, info = env.step(actions)
 
-    if terminated[0]:  # ✅ Team scored 2 goals!
+    if terminated[0]:  #Team scored 2 goals!
         # Determine winner from final rewards
         team1_total = sum(rewards[i] for i in [0, 1])
         team2_total = sum(rewards[i] for i in [2, 3])
         winner = "Team 1 (Green)" if team1_total > 0 else "Team 2 (Red)"
-        print(f"🏆 {winner} wins! Episode finished in {step} steps")
+        print(f"{winner} wins! Episode finished in {step} steps")
         break
 
     if truncated[0]:  # Time limit reached
-        print(f"⏱️ Time limit reached. Determine winner by cumulative score.")
+        print(f"Time limit reached. Determine winner by cumulative score.")
         break
 ```
 
-📖 **See [SOCCER_IMPROVEMENTS.md](SOCCER_IMPROVEMENTS.md) for complete details on mechanics, bug fixes, and training.**
-
 ---
 
-#### Soccer Original (MosaicMultiGrid-Soccer-v0) ⚠️ DEPRECATED
+#### Soccer Original (MosaicMultiGrid-Soccer-v0) DEPRECATED
 
 | Criterion | Condition |
 |-----------|-----------|
-| **Terminated** | ❌ NEVER - No natural termination |
-| **Truncated** | ✅ When `max_steps = 10,000` |
+| **Terminated** |NEVER - No natural termination |
+| **Truncated** |When `max_steps = 10,000` |
 | **Winning Condition** | Team with higher cumulative score when truncation occurs |
 | **Scoring Mechanism** | Drop ball at opponent's ObjectGoal: +1 to scoring team, -1 to other team (zero-sum) |
 | **Episode Length** | Always exactly 10,000 steps (fixed-length competitive game) |
 
-**Design rationale**: Soccer deliberately uses only truncation (no termination) to create **fixed-length competitive matches**. Winner is determined by final score, not by first-to-goal. This mirrors real sports where games have fixed time limits.
+**Design rationale**: Soccer deliberately uses only truncation (no termination) to create **fixed-length competitive matches**. Winner is determined by final score.
 
 ```python
 env = gym.make('MosaicMultiGrid-Soccer-v0')
@@ -449,16 +443,16 @@ for step in range(10000):
 
 ---
 
-#### Collect Enhanced (MosaicMultiGrid-Collect-Enhanced-v0) ✅ RECOMMENDED
+#### Collect Enhanced (MosaicMultiGrid-Collect-Enhanced-v0) RECOMMENDED
 
 | Criterion | Condition |
 |-----------|-----------|
-| **Terminated** | ✅ When all 5 balls are collected |
-| **Truncated** | ✅ When `max_steps = 300` (configurable) |
+| **Terminated** |When all 5 balls are collected |
+| **Truncated** |When `max_steps = 300` (configurable) |
 | **Winning Condition** | Agent with highest cumulative reward when episode ends |
 | **Scoring Mechanism** | Pickup wildcard ball (index=0): +1 to agent, -1 to all other agents (zero-sum) |
 | **Episode Length** | Variable (100-300 steps typically, terminates when all balls collected) |
-| **Training Speedup** | ✅ **35× faster** than original (300 vs 10,000 steps) |
+| **Training Speedup** |**35× faster** than original (300 vs 10,000 steps) |
 
 **Design rationale**: Enhanced Collect terminates naturally when all balls are collected, eliminating the bug where episodes ran for 10,000 steps with nothing to do. This creates a **35× training speedup** and provides clear termination signals for RL agents.
 
@@ -474,23 +468,21 @@ for step in range(300):
     for i in range(3):
         cumulative_rewards[i] += rewards[i]
 
-    if terminated[0]:  # ✅ All 5 balls collected!
+    if terminated[0]:  #All 5 balls collected!
         winner = max(cumulative_rewards, key=cumulative_rewards.get)
-        print(f"🏆 Agent {winner} wins! Episode finished in {step} steps")
+        print(f"Agent {winner} wins! Episode finished in {step} steps")
         print(f"Final scores: {cumulative_rewards}")
         break
 ```
 
-📖 **See [COLLECT_IMPROVEMENTS.md](COLLECT_IMPROVEMENTS.md) for complete details on the bug fix and 35× speedup.**
-
 ---
 
-#### Collect Enhanced 2vs2 (MosaicMultiGrid-Collect2vs2-Enhanced-v0) ✅ RECOMMENDED
+#### Collect Enhanced 2vs2 (MosaicMultiGrid-Collect2vs2-Enhanced-v0) RECOMMENDED
 
 | Criterion | Condition |
 |-----------|-----------|
-| **Terminated** | ✅ When all 7 balls are collected |
-| **Truncated** | ✅ When `max_steps = 400` (configurable) |
+| **Terminated** |When all 7 balls are collected |
+| **Truncated** |When `max_steps = 400` (configurable) |
 | **Winning Condition** | Team with highest cumulative score when episode ends |
 | **Scoring Mechanism** | Pickup wildcard ball: +1 to entire team, -1 to opponent team (zero-sum) |
 | **Episode Length** | Variable (150-400 steps typically) |
@@ -505,22 +497,22 @@ for step in range(400):
     actions = {i: agent_policy(obs[i]) for i in range(4)}
     obs, rewards, terminated, truncated, info = env.step(actions)
 
-    if terminated[0]:  # ✅ All 7 balls collected!
+    if terminated[0]:  #All 7 balls collected!
         team1_score = sum(rewards[i] for i in [0, 1])
         team2_score = sum(rewards[i] for i in [2, 3])
         winner = "Team 1 (Green)" if team1_score > team2_score else "Team 2 (Red)"
-        print(f"🏆 {winner} wins!")
+        print(f"{winner} wins!")
         break
 ```
 
 ---
 
-#### CollectGame Original (MosaicMultiGrid-Collect-v0) ⚠️ DEPRECATED
+#### CollectGame Original (MosaicMultiGrid-Collect-v0) DEPRECATED
 
 | Criterion | Condition |
 |-----------|-----------|
-| **Terminated** | ❌ NEVER - No natural termination |
-| **Truncated** | ✅ When `max_steps = 10,000` |
+| **Terminated** |NEVER - No natural termination |
+| **Truncated** |When `max_steps = 10,000` |
 | **Winning Condition** | Agent with highest cumulative reward when truncation occurs |
 | **Scoring Mechanism** | Pickup wildcard ball (index=0): +1 to agent, -1 to all other agents (zero-sum) |
 | **Episode Length** | Always exactly 10,000 steps |
@@ -556,8 +548,8 @@ for step in range(10000):
 
 | Criterion | Condition |
 |-----------|-----------|
-| **Terminated** | ❌ NEVER - No natural termination |
-| **Truncated** | ✅ When `max_steps = 10,000` |
+| **Terminated** |NEVER - No natural termination |
+| **Truncated** |When `max_steps = 10,000` |
 | **Winning Condition** | Team with higher cumulative score when truncation occurs |
 | **Scoring Mechanism** | Pickup wildcard ball (index=0): +1 to team, -1 to other team (zero-sum) |
 | **Episode Length** | Always exactly 10,000 steps |
@@ -641,7 +633,7 @@ env = gym.make('MosaicMultiGrid-Soccer-v0', max_steps=5000)
 ## Architecture
 
 ```
-gym_multigrid/
+mosaic_multigrid/
 ├── base.py                  # MultiGridEnv (Gymnasium-compliant base)
 ├── core/
 │   ├── constants.py         # Type, Color, State, Direction enums
@@ -658,9 +650,12 @@ gym_multigrid/
 │   └── misc.py              # front_pos, PropertyAlias
 ├── envs/
 │   ├── soccer_game.py       # SoccerGameEnv + variants
-│   └── collect_game.py      # CollectGameEnv + variants
-├── wrappers.py              # FullyObs, ImgObs, OneHotObs, SingleAgent
-├── pettingzoo/              # PettingZoo ParallelEnv adapter
+│   ├── collect_game.py      # CollectGameEnv + variants
+│   └── basketball_game.py   # BasketballGameEnv + 3vs3 variants
+├── rendering/
+│   └── basketball.py        # Basketball court renderer (arcs, paint, center circle)
+├── wrappers.py              # FullyObs, ImgObs, OneHotObs, SingleAgent, TeamObs
+├── pettingzoo/              # PettingZoo Parallel + AEC adapters
 └── rllib/                   # Ray RLlib MultiAgentEnv adapter
 ```
 
@@ -719,19 +714,62 @@ The default `view_size=3` gives each agent a 3x3 partial view (matching our comp
 
 ## Framework Adapters
 
-### PettingZoo
+### PettingZoo (Parallel + AEC)
+
+mosaic_multigrid supports both PettingZoo stepping paradigms:
+
+- **Parallel API** ([docs](https://pettingzoo.farama.org/api/parallel/)): All agents submit actions simultaneously via a single `step(actions_dict)` call. This is the native mode for mosaic_multigrid.
+- **AEC API** ([docs](https://pettingzoo.farama.org/api/aec/)): Agents take turns sequentially via `agent_iter()`. Internally, this converts the Parallel env using PettingZoo's `parallel_to_aec()` utility -- actions are buffered until every agent has acted, then forwarded to the underlying parallel env in one batch.
+
+For background on PettingZoo's multi-agent API design, see [Terry et al. (2021)](https://arxiv.org/abs/2009.14471).
+
+#### Parallel API (simultaneous stepping)
 
 ```python
-from gym_multigrid.pettingzoo import to_pettingzoo_env
+from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2
+from mosaic_multigrid.pettingzoo import to_pettingzoo_env
 
-env = to_pettingzoo_env('MosaicMultiGrid-Soccer-v0', render_mode='rgb_array')
-# Returns a PettingZoo ParallelEnv
+PZParallel = to_pettingzoo_env(SoccerGame4HEnv10x15N2)
+env = PZParallel(render_mode='rgb_array')
+obs, infos = env.reset(seed=42)
+
+while env.agents:
+    actions = {agent: env.action_space(agent).sample() for agent in env.agents}
+    obs, rewards, terms, truncs, infos = env.step(actions)
+
+env.close()
+```
+
+#### AEC API (sequential turn-based stepping)
+
+```python
+from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2
+from mosaic_multigrid.pettingzoo import to_pettingzoo_aec_env
+
+PZAec = to_pettingzoo_aec_env(SoccerGame4HEnv10x15N2)
+env = PZAec(render_mode='rgb_array')
+env.reset(seed=42)
+
+for agent in env.agent_iter():
+    obs, reward, term, trunc, info = env.last()
+    action = None if term or trunc else env.action_space(agent).sample()
+    env.step(action)
+
+env.close()
+```
+
+Both APIs pass PettingZoo's official `parallel_api_test` and `aec_api_test` validators (32 tests total).
+
+Install with:
+
+```bash
+pip install mosaic-multigrid[pettingzoo]  # requires pettingzoo >= 1.22
 ```
 
 ### Ray RLlib
 
 ```python
-from gym_multigrid.rllib import to_rllib_env
+from mosaic_multigrid.rllib import to_rllib_env
 
 env_cls = to_rllib_env('MosaicMultiGrid-Soccer-v0')
 # Returns an RLlib MultiAgentEnv class (adds __all__ keys to terminated/truncated)
@@ -789,6 +827,19 @@ If you use this environment, please cite the relevant works:
   journal = {GitHub repository},
   howpublished = {\url{https://github.com/Abdulhamid97Mousa/mosaic_multigrid}},
 }
+
+@article{terry2021pettingzoo,
+  title = {PettingZoo: Gym for Multi-Agent Reinforcement Learning},
+  author = {Terry, J. K and Black, Benjamin and Grammel, Nathaniel and Jayakumar, Mario
+            and Hari, Ananth and Sullivan, Ryan and Santos, Luis S and Dieffendahl, Clemens
+            and Horsch, Caroline and Perez-Vicente, Rodrigo and Williams, Niall L
+            and Lokesh, Yashas and Ravi, Praveen},
+  journal = {Advances in Neural Information Processing Systems},
+  volume = {34},
+  pages = {2242--2254},
+  year = {2021},
+  url = {https://pettingzoo.farama.org/},
+}
 ```
 
 ## License
@@ -796,4 +847,5 @@ If you use this environment, please cite the relevant works:
 Apache License 2.0 -- see [LICENSE](LICENSE) for details.
 
 **Original work:** MiniGrid (Copyright 2020 Maxime Chevalier-Boisvert), MultiGrid extension (Copyright 2020 Arnaud Fickinger), INI multigrid (Copyright 2023 Ini Oguntola et al.).
+
 **This fork:** Copyright 2026 Abdulhamid Mousa.

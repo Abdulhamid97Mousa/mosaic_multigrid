@@ -1,11 +1,19 @@
-"""Soccer game environment for the MOSAIC multigrid package.
+"""Basketball game environment for the MOSAIC multigrid package.
 
 Teams score by dropping a ball at the opposing team's goal (an
-:class:`~gym_multigrid.core.world_object.ObjectGoal`).  In the base
-environment agents can **pass** the ball to an adjacent teammate.  The
-IndAgObs variant upgrades this to **teleport passing** -- the ball
-instantly transfers to a teammate anywhere on the grid.  Agents can
-**steal** by picking up from an opponent who is carrying.
+:class:`~gym_multigrid.core.world_object.ObjectGoal`) placed on the
+baseline.  In the base environment agents can **pass** the ball to an
+adjacent teammate.  The IndAgObs variant upgrades this to **teleport
+passing** -- the ball instantly transfers to a teammate anywhere on the
+grid.  Agents can **steal** by picking up from an opponent who is
+carrying.
+
+Basketball 3vs3:
+  - 19x11 total grid (17x9 playable area)
+  - 3 agents per team (Green team 1 = left, Blue team 2 = right)
+  - Goals on baseline cells: (1, 5) and (17, 5)
+  - Same mechanics as Soccer IndAgObs (teleport pass, steal cooldown,
+    ball respawn, first-to-N-goals termination)
 """
 from __future__ import annotations
 
@@ -14,12 +22,12 @@ from ..core.agent import Agent
 from ..core.constants import Color
 from ..core.grid import Grid
 from ..core.world_object import Ball, ObjectGoal
-from ..rendering import render_fifa
+from ..rendering import render_basketball
 
 
-class SoccerGameEnv(MultiGridEnv):
+class BasketballGameEnv(MultiGridEnv):
     """
-    Multi-agent soccer game on a walled grid.
+    Multi-agent basketball game on a walled grid.
 
     Parameters
     ----------
@@ -38,7 +46,7 @@ class SoccerGameEnv(MultiGridEnv):
     num_balls : list[int]
         Number of balls to spawn per ball-type entry.
     agents_index : list[int]
-        Team assignment for each agent (e.g. ``[1, 1, 2, 2]``).
+        Team assignment for each agent (e.g. ``[1, 1, 1, 2, 2, 2]``).
     balls_index : list[int]
         Team index per ball-type entry (0 = wildcard, any team can use).
     zero_sum : bool
@@ -144,12 +152,6 @@ class SoccerGameEnv(MultiGridEnv):
         rewards: dict[int, float],
         reward: float = 1.0,
     ):
-        """
-        Distribute reward to all agents on *scoring_team*.
-
-        If ``self.zero_sum`` is ``True``, agents on other teams receive
-        ``-reward``.
-        """
         for agent in self.agents:
             if agent.team_index == scoring_team:
                 rewards[agent.index] += reward
@@ -166,12 +168,6 @@ class SoccerGameEnv(MultiGridEnv):
         agent: Agent,
         rewards: dict[int, float],
     ):
-        """
-        Pickup with ball stealing.
-
-        - Normal pickup: pick up a ball from the ground.
-        - Steal: if an opponent in front is carrying a ball, take it.
-        """
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
@@ -195,13 +191,6 @@ class SoccerGameEnv(MultiGridEnv):
         agent: Agent,
         rewards: dict[int, float],
     ):
-        """
-        Drop with passing and scoring.
-
-        - Score: drop ball on matching ObjectGoal -> team reward.
-        - Pass: drop toward a teammate -> transfer ball.
-        - Ground drop: drop onto empty cell.
-        """
         if agent.state.carrying is None:
             return
 
@@ -212,7 +201,6 @@ class SoccerGameEnv(MultiGridEnv):
         if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
             ball = agent.state.carrying
             if fwd_obj.target_type == ball.type.value:
-                # Ball index 0 is wildcard (can score at any goal)
                 if ball.index in (0, fwd_obj.index):
                     self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
                     agent.state.carrying = None
@@ -234,45 +222,29 @@ class SoccerGameEnv(MultiGridEnv):
 
 
 # -----------------------------------------------------------------------
-# Concrete variants
+# IndAgObs variant (Individual Agent Observations)
 # -----------------------------------------------------------------------
 
-class SoccerGame4HEnv10x15N2(SoccerGameEnv):
-    """4 agents (2v2), 15x10 grid, 1 wildcard ball, zero-sum."""
-
-    def __init__(self, **kwargs):
-        super().__init__(
-            size=None,
-            height=10,
-            width=15,
-            goal_pos=[[1, 5], [13, 5]],
-            goal_index=[1, 2],
-            num_balls=[1],
-            agents_index=[1, 1, 2, 2],
-            balls_index=[0],
-            zero_sum=True,
-            **kwargs,
-        )
-
-
-# -----------------------------------------------------------------------
-# IndAgObs variants (Individual Agent Observations) - Fixed for RL training
-# -----------------------------------------------------------------------
-
-class SoccerGameIndAgObsEnv(SoccerGameEnv):
-    """IndAgObs Soccer game with teleport passing, ball respawn, termination,
+class BasketballGameIndAgObsEnv(BasketballGameEnv):
+    """IndAgObs Basketball with teleport passing, ball respawn, termination,
     and stealing cooldown.
 
-    This is the RECOMMENDED version for RL training. Fixes critical bugs:
-
-    Key improvements over SoccerGameEnv:
+    Key improvements over BasketballGameEnv:
     - Teleport passing: ball teleports to teammate anywhere on the grid
-    - Ball respawns after each goal (no disappearing ball bug)
-    - Episode terminates when team scores 2 goals (first to win)
-    - Dual cooldown on stealing (10 steps for both stealer and victim)
-    - STATE channel encoding for ball carrying (observability fixed)
-    - ~50x faster training (200 vs 10,000 steps average)
+    - Ball respawns after each goal
+    - Episode terminates when team scores N goals (first to win)
+    - Dual cooldown on stealing (both stealer and victim)
+    - STATE channel encoding for ball carrying (observability)
     """
+
+    # Court rendering configuration (used by render_basketball)
+    court_cfg = {
+        'paint_depth': 3,
+        'paint_half_h': 2,
+        'three_pt_radius': 5.0,
+        'center_radius': 1.5,
+        'ft_circle_radius': 2,
+    }
 
     def __init__(
         self,
@@ -291,14 +263,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         goals_to_win: int = 2,
         steal_cooldown: int = 10,
     ):
-        """
-        Parameters
-        ----------
-        goals_to_win : int
-            First team to score this many goals wins (default: 2).
-        steal_cooldown : int
-            Steps both stealer and victim wait after steal (default: 10).
-        """
         super().__init__(
             size=size,
             width=width,
@@ -318,31 +282,21 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         self.team_scores: dict[int, int] = {}
 
     def get_full_render(self, highlight: bool, tile_size: int):
-        """Override to use FIFA-style rendering instead of default grid tiles."""
-        return render_fifa(self, tile_size)
+        """Override to use basketball-court rendering."""
+        return render_basketball(self, tile_size)
 
     def reset(self, **kwargs):
-        """Reset with team score and cooldown tracking."""
-        # Call parent reset first
         obs, info = super().reset(**kwargs)
-
-        # Initialize team scores (one entry per unique team index)
         unique_teams = set(agent.team_index for agent in self.agents)
         self.team_scores = {team: 0 for team in unique_teams}
-
-        # Initialize action cooldowns for all agents
         for agent in self.agents:
             agent.action_cooldown = 0
-
         return obs, info
 
     def step(self, actions):
-        """Step with cooldown decrements."""
-        # Decrement action cooldowns before processing actions
         for agent in self.agents:
             if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
                 agent.action_cooldown -= 1
-
         return super().step(actions)
 
     def _handle_pickup(
@@ -351,13 +305,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         agent: Agent,
         rewards: dict[int, float],
     ):
-        """
-        Pickup with ball stealing and dual cooldown.
-
-        When stealing from opponent:
-        - Both stealer and victim get cooldown (cannot pickup for N steps)
-        - Prevents ping-pong stealing exploit
-        """
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
@@ -368,21 +315,15 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                 self.grid.set(*fwd_pos, None)
                 return
 
-        # Steal from another agent (with cooldown check)
+        # Steal from opponent (with cooldown)
         target = self._agent_at(fwd_pos)
         if target is not None and target.state.carrying is not None:
             if agent.state.carrying is None:
-                # Check if agent is in cooldown
                 if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
-                    return  # Cannot steal yet (recovering from previous tackle)
-
-                # Check if teams are different (can only steal from opponent)
+                    return
                 if target.team_index != agent.team_index:
-                    # Steal successful!
                     agent.state.carrying = target.state.carrying
                     target.state.carrying = None
-
-                    # NEW: Apply dual cooldown (both stealer and victim)
                     agent.action_cooldown = self.steal_cooldown
                     target.action_cooldown = self.steal_cooldown
 
@@ -392,49 +333,32 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         agent: Agent,
         rewards: dict[int, float],
     ):
-        """
-        Drop with teleport passing, scoring, ball respawn, and termination.
-
-        Priority chain:
-        1. **Score** -- drop ball on matching ObjectGoal -> team reward + respawn.
-        2. **Teleport pass** -- ball teleports to a random teammate anywhere
-           on the grid (teammate must not already be carrying).
-        3. **Ground drop** -- drop onto empty cell in front (fallback).
-
-        Teleport passing replaces the old 1-cell adjacency handoff. The ball
-        transfers instantly regardless of distance, creating attack/defense
-        dynamics when combined with the stealing mechanic.
-        """
         if agent.state.carrying is None:
             return
 
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Priority 1: Try scoring on an ObjectGoal
+        # Priority 1: Score at goal
         if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
             ball = agent.state.carrying
             if fwd_obj.target_type == ball.type.value:
-                # Ball index 0 is wildcard (can score at any goal)
                 if ball.index in (0, fwd_obj.index):
                     self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
                     agent.state.carrying = None
 
-                    # Respawn ball with same color and team index
-                    new_ball = Ball(
-                        color=ball.color,
-                        index=ball.index,
-                    )
+                    # Respawn ball
+                    new_ball = Ball(color=ball.color, index=ball.index)
                     self.place_obj(new_ball)
 
-                    # Track team score and check win condition
+                    # Check win condition
                     self.team_scores[fwd_obj.index] += 1
                     if self.team_scores[fwd_obj.index] >= self.goals_to_win:
                         for a in self.agents:
                             a.state.terminated = True
                     return
 
-        # Priority 2: Teleport pass to a teammate (anywhere on the grid)
+        # Priority 2: Teleport pass to teammate
         teammates = [
             a for a in self.agents
             if a.team_index == agent.team_index
@@ -448,38 +372,42 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             agent.state.carrying = None
             return
 
-        # Priority 3: Drop on empty ground (fallback)
+        # Priority 3: Ground drop
         if fwd_obj is None and self._agent_at(fwd_pos) is None:
             self.grid.set(*fwd_pos, agent.state.carrying)
             agent.state.carrying.cur_pos = fwd_pos
             agent.state.carrying = None
 
 
-class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
-    """IndAgObs 2v2 Soccer with FIFA aspect ratio (16×11 total, 14×9 playable).
+# -----------------------------------------------------------------------
+# Concrete 3vs3 variant
+# -----------------------------------------------------------------------
 
-    RECOMMENDED for RL training. Key features:
-    - 16×11 grid (FIFA 105m × 68m ≈ 1.54 ratio)
-    - 14×9 playable area (126 cells)
-    - Goals at (1,5) and (14,5) - vertical center
+class BasketballGame6HIndAgObsEnv19x11N3(BasketballGameIndAgObsEnv):
+    """IndAgObs 3vs3 Basketball (19x11 total, 17x9 playable).
+
+    Key features:
+    - 19x11 grid (17x9 playable area)
+    - 3vs3 teams: Green (team 1, left) vs Blue (team 2, right)
+    - Goals at (1, 5) and (17, 5) -- baseline center
     - First to 2 goals wins
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
+    - Teleport passing to any teammate
     - 200 max_steps (enough for 2-3 scoring attempts)
     """
 
     def __init__(self, **kwargs):
-        # Set default max_steps for RL training (can be overridden)
         kwargs.setdefault('max_steps', 200)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
-            width=16,  # FIFA-style width
-            height=11,  # FIFA-style height
-            goal_pos=[[1, 5], [14, 5]],  # Goals at vertical center
+            width=19,
+            height=11,
+            goal_pos=[[1, 5], [17, 5]],
             goal_index=[1, 2],
             num_balls=[1],
-            agents_index=[1, 1, 2, 2],  # 2v2 teams
+            agents_index=[1, 1, 1, 2, 2, 2],  # 3vs3
             balls_index=[0],  # Wildcard ball
             zero_sum=True,
             **kwargs,

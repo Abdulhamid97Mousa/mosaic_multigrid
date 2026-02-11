@@ -1,15 +1,34 @@
-"""PettingZoo ParallelEnv adapter for MOSAIC multigrid environments.
+"""PettingZoo adapters for MOSAIC multigrid environments.
+
+Supports both PettingZoo APIs:
+
+- **Parallel API** (simultaneous stepping): All agents act at once.
+- **AEC API** (Agent Environment Cycle): Agents take turns sequentially.
 
 Usage::
 
-    from mosaic_multigrid.pettingzoo import PettingZooWrapper, to_pettingzoo_env
+    from mosaic_multigrid.pettingzoo import (
+        PettingZooWrapper,       # Parallel API wrapper
+        to_pettingzoo_env,       # Parallel factory
+        to_pettingzoo_aec_env,   # AEC factory
+    )
 
-    # Wrap an existing env instance
-    env = PettingZooWrapper(my_multigrid_env)
+    # --- Parallel API (all agents act simultaneously) ---
+    PZParallel = to_pettingzoo_env(SoccerGame4HEnv10x15N2)
+    env = PZParallel(render_mode='rgb_array')
+    obs, infos = env.reset(seed=42)
+    while env.agents:
+        actions = {agent: env.action_space(agent).sample() for agent in env.agents}
+        obs, rewards, terms, truncs, infos = env.step(actions)
 
-    # Or create from an env class
-    PZEnvCls = to_pettingzoo_env(SoccerGame4HEnv10x15N2)
-    env = PZEnvCls(render_mode='rgb_array')
+    # --- AEC API (agents take turns) ---
+    PZAec = to_pettingzoo_aec_env(SoccerGame4HEnv10x15N2)
+    env = PZAec(render_mode='rgb_array')
+    env.reset(seed=42)
+    for agent in env.agent_iter():
+        obs, reward, term, trunc, info = env.last()
+        action = None if term or trunc else env.action_space(agent).sample()
+        env.step(action)
 """
 from __future__ import annotations
 
@@ -20,6 +39,7 @@ import gymnasium
 
 try:
     from pettingzoo import ParallelEnv
+    from pettingzoo.utils.conversions import parallel_to_aec
 except ImportError:
     raise ImportError(
         'PettingZoo is required for this adapter. '
@@ -33,8 +53,11 @@ AgentID = int
 
 class PettingZooWrapper(ParallelEnv):
     """
-    Wrap a :class:`~gym_multigrid.base.MultiGridEnv` as a PettingZoo
-    :class:`~pettingzoo.ParallelEnv`.
+    Wrap a :class:`~mosaic_multigrid.base.MultiGridEnv` as a PettingZoo
+    :class:`~pettingzoo.ParallelEnv` (simultaneous stepping).
+
+    All agents submit actions at the same time and receive observations
+    after the environment has processed all actions.
 
     Parameters
     ----------
@@ -45,11 +68,15 @@ class PettingZooWrapper(ParallelEnv):
     metadata: dict[str, Any] = {
         'render_modes': ['human', 'rgb_array'],
         'name': 'mosaic_multigrid_v0',
+        'is_parallelizable': True,
     }
 
     def __init__(self, env: MultiGridEnv):
         self.env = env
-        self.possible_agents: list[AgentID] = [a.index for a in env.agents]
+        # Use unwrapped to reach base MultiGridEnv attributes through any
+        # Gymnasium wrappers (e.g. TeamObsWrapper, FullyObsWrapper).
+        base = env.unwrapped if hasattr(env, 'unwrapped') else env
+        self.possible_agents: list[AgentID] = [a.index for a in base.agents]
         self.agents: list[AgentID] = self.possible_agents[:]
 
     # ------------------------------------------------------------------
@@ -93,11 +120,28 @@ class PettingZooWrapper(ParallelEnv):
 
         obs, rewards, terminations, truncations, infos = self.env.step(actions)
 
-        # Remove terminated/truncated agents from active list
-        self.agents = [
+        # PettingZoo requires native Python types (not numpy.bool_, numpy.float64)
+        terminations = {a: bool(v) for a, v in terminations.items()}
+        truncations = {a: bool(v) for a, v in truncations.items()}
+        rewards = {a: float(v) for a, v in rewards.items()}
+
+        # Ensure infos exist for all active agents (PettingZoo requirement)
+        if not infos:
+            infos = {a: {} for a in self.agents}
+        else:
+            for a in self.agents:
+                if a not in infos:
+                    infos[a] = {}
+
+        # Remove terminated/truncated agents from active list and their infos
+        still_alive = [
             a for a in self.agents
             if not (terminations.get(a, False) or truncations.get(a, False))
         ]
+        dead_agents = set(self.agents) - set(still_alive)
+        for a in dead_agents:
+            infos.pop(a, None)
+        self.agents = still_alive
 
         return obs, rewards, terminations, truncations, infos
 
@@ -113,11 +157,11 @@ class PettingZooWrapper(ParallelEnv):
 
     def state(self):
         """Return the full grid state (for centralized training)."""
-        return self.env.grid.encode()
+        return self.env.unwrapped.grid.encode()
 
 
 # -----------------------------------------------------------------------
-# Factory
+# Parallel Factory
 # -----------------------------------------------------------------------
 
 def to_pettingzoo_env(
@@ -126,7 +170,9 @@ def to_pettingzoo_env(
     metadata: dict[str, Any] | None = None,
 ) -> type[PettingZooWrapper]:
     """
-    Create a PettingZoo ParallelEnv class from a multigrid env class.
+    Create a PettingZoo **ParallelEnv** class from a multigrid env class.
+
+    All agents act simultaneously each step.
 
     Parameters
     ----------
@@ -162,3 +208,56 @@ def to_pettingzoo_env(
         PettingZooEnv.metadata = metadata
 
     return PettingZooEnv
+
+
+# -----------------------------------------------------------------------
+# AEC Factory
+# -----------------------------------------------------------------------
+
+def to_pettingzoo_aec_env(
+    env_cls: type[MultiGridEnv],
+    *wrappers: type[gymnasium.Wrapper],
+    metadata: dict[str, Any] | None = None,
+):
+    """
+    Create a PettingZoo **AECEnv** class from a multigrid env class.
+
+    Agents take turns acting sequentially (Agent Environment Cycle).
+    Internally, this wraps the ParallelEnv using PettingZoo's
+    ``parallel_to_aec`` conversion utility.
+
+    Parameters
+    ----------
+    env_cls : type[MultiGridEnv]
+        The multigrid environment class to wrap.
+    *wrappers : type[gymnasium.Wrapper]
+        Optional wrappers to apply (in order) before the PettingZoo wrapper.
+    metadata : dict or None
+        Override metadata for the PettingZoo environment.
+
+    Returns
+    -------
+    type
+        A callable that creates an AECEnv instance.
+
+    Example
+    -------
+    >>> from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2
+    >>> AecEnvFactory = to_pettingzoo_aec_env(SoccerGame4HEnv10x15N2)
+    >>> env = AecEnvFactory(render_mode='rgb_array')
+    >>> env.reset(seed=42)
+    >>> for agent in env.agent_iter():
+    ...     obs, reward, term, trunc, info = env.last()
+    ...     action = None if term or trunc else env.action_space(agent).sample()
+    ...     env.step(action)
+    """
+    parallel_cls = to_pettingzoo_env(env_cls, *wrappers, metadata=metadata)
+
+    def make_aec(*args, **kwargs):
+        parallel_env = parallel_cls(*args, **kwargs)
+        return parallel_to_aec(parallel_env)
+
+    make_aec.__name__ = f'AEC_{env_cls.__name__}'
+    make_aec.__qualname__ = make_aec.__name__
+
+    return make_aec

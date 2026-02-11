@@ -1,6 +1,7 @@
 """Tests for MOSAIC multigrid observation wrappers.
 
-Covers: FullyObsWrapper, ImgObsWrapper, OneHotObsWrapper, SingleAgentWrapper.
+Covers: FullyObsWrapper, ImgObsWrapper, OneHotObsWrapper, SingleAgentWrapper,
+        TeamObsWrapper, and wrapper composition.
 """
 import numpy as np
 import pytest
@@ -11,8 +12,13 @@ from mosaic_multigrid.wrappers import (
     ImgObsWrapper,
     OneHotObsWrapper,
     SingleAgentWrapper,
+    TeamObsWrapper,
+    _one_hot,
+    _DIM_SIZES,
+    _ONE_HOT_DIM,
 )
 from mosaic_multigrid.core import Action, WorldObj
+from mosaic_multigrid.core.constants import Type, Color, Direction
 
 
 # ---------------------------------------------------------------
@@ -78,10 +84,8 @@ class TestOneHotObsWrapper:
         env = OneHotObsWrapper(env)
         obs, _ = env.reset(seed=42)
 
-        # Default view_size=3, should be (3, 3, sum(dim_sizes))
-        # dim_sizes = [len(Type), len(Color), max(len(State), len(Direction))]
-        from mosaic_multigrid.core import Type, Color, State, Direction
-        expected_depth = len(Type) + len(Color) + max(len(State), len(Direction))
+        # dim_sizes = [len(Type), len(Color), len(Direction)] + 1 carrying bit
+        expected_depth = len(Type) + len(Color) + len(Direction) + 1  # 24
 
         assert obs[0]['image'].shape[2] == expected_depth
 
@@ -184,3 +188,108 @@ class TestWrapperComposition:
         # Final obs should be just the image for agent 0
         assert isinstance(obs, np.ndarray)
         assert obs.ndim == 3
+
+    def test_teamobs_then_onehot_preserves_keys(self):
+        """OneHotObsWrapper must pass through TeamObs extra keys."""
+        env = SoccerGame4HEnv10x15N2()
+        env = TeamObsWrapper(env)
+        env = OneHotObsWrapper(env)
+        obs, _ = env.reset(seed=42)
+
+        assert 'teammate_positions' in obs[0]
+        assert 'teammate_directions' in obs[0]
+        assert 'teammate_has_ball' in obs[0]
+        assert obs[0]['image'].dtype == np.float32
+        assert obs[0]['image'].shape[2] == _ONE_HOT_DIM
+
+    def test_teamobs_then_onehot_obs_space_has_all_keys(self):
+        """OneHotObsWrapper observation_space must include TeamObs keys."""
+        env = SoccerGame4HEnv10x15N2()
+        env = TeamObsWrapper(env)
+        env = OneHotObsWrapper(env)
+
+        space = env.observation_space[0]
+        assert 'teammate_positions' in space.spaces
+        assert 'teammate_directions' in space.spaces
+        assert 'teammate_has_ball' in space.spaces
+        assert space['image'].shape[2] == _ONE_HOT_DIM
+
+
+# ---------------------------------------------------------------
+# OneHot: Ball-Carrying Encoding (Option B)
+# ---------------------------------------------------------------
+
+class TestOneHotBallCarrying:
+    """Verify that the factored one-hot encoding correctly handles
+    Agent.encode() sentinel values (100-103) for ball-carrying agents."""
+
+    def test_carrying_agent_sets_carry_bit(self):
+        """STATE=102 (carrying ball, facing left) should set carry=1."""
+        # Type.agent=10, Color.green=1, STATE=102 (left + carrying)
+        image = np.array([[[10, 1, 102]]], dtype=np.uint8)
+        result = _one_hot(image, _DIM_SIZES)
+
+        assert result.shape == (1, 1, _ONE_HOT_DIM)
+
+        # TYPE: index 10 (agent) should be 1
+        assert result[0, 0, 10] == 1.0
+
+        # COLOR: offset=13, index 1 (green) -> position 14
+        assert result[0, 0, 14] == 1.0
+
+        # DIRECTION: offset=19, index 2 (left) -> position 21
+        assert result[0, 0, 21] == 1.0
+
+        # CARRYING bit: offset=23 -> position 23
+        assert result[0, 0, 23] == 1.0
+
+    def test_non_carrying_agent_clear_carry_bit(self):
+        """STATE=2 (no ball, facing left) should set carry=0."""
+        image = np.array([[[10, 1, 2]]], dtype=np.uint8)
+        result = _one_hot(image, _DIM_SIZES)
+
+        # DIRECTION: left (index 2) should be set
+        assert result[0, 0, 21] == 1.0
+
+        # CARRYING bit should be 0
+        assert result[0, 0, 23] == 0.0
+
+    def test_all_four_carrying_directions(self):
+        """Verify STATE 100, 101, 102, 103 each encode correctly."""
+        for direction_val in range(4):
+            state_val = 100 + direction_val
+            image = np.array([[[10, 0, state_val]]], dtype=np.uint8)
+            result = _one_hot(image, _DIM_SIZES)
+
+            # Exactly one direction bit set
+            dir_slice = result[0, 0, 19:23]
+            assert dir_slice.sum() == 1.0
+            assert dir_slice[direction_val] == 1.0
+
+            # Carrying bit set
+            assert result[0, 0, 23] == 1.0
+
+    def test_all_four_non_carrying_directions(self):
+        """Verify STATE 0, 1, 2, 3 each encode correctly without carry."""
+        for direction_val in range(4):
+            image = np.array([[[10, 0, direction_val]]], dtype=np.uint8)
+            result = _one_hot(image, _DIM_SIZES)
+
+            dir_slice = result[0, 0, 19:23]
+            assert dir_slice.sum() == 1.0
+            assert dir_slice[direction_val] == 1.0
+
+            assert result[0, 0, 23] == 0.0
+
+    def test_non_agent_cells_have_zero_carry_bit(self):
+        """Walls, empty cells, etc. should have carry=0."""
+        # Type.wall=2, Color.grey=5, STATE=0
+        image = np.array([[[2, 5, 0]]], dtype=np.uint8)
+        result = _one_hot(image, _DIM_SIZES)
+
+        assert result[0, 0, 23] == 0.0
+
+    def test_one_hot_dim_is_24(self):
+        """Confirm the total one-hot dimension is 24."""
+        assert _ONE_HOT_DIM == 24
+        assert _ONE_HOT_DIM == len(Type) + len(Color) + len(Direction) + 1

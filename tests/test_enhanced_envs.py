@@ -179,6 +179,11 @@ class TestSoccerEnhanced:
         agent_victim = env.agents[2]
         agent_stealer = env.agents[0]
 
+        # Clear grid cells where we manually place agents to prevent
+        # random balls from interfering with the steal logic
+        env.grid.set(2, 3, None)
+        env.grid.set(3, 3, None)
+
         agent_victim.state.carrying = Ball(color=Color.red, index=0)
         agent_victim.state.pos = (3, 3)
 
@@ -217,6 +222,10 @@ class TestSoccerEnhanced:
 
         agent0 = env.agents[0]  # Team 1
         agent2 = env.agents[2]  # Team 2
+
+        # Clear grid cells where we manually place agents
+        env.grid.set(2, 3, None)
+        env.grid.set(3, 3, None)
 
         # Setup
         agent2.state.carrying = Ball(color=Color.red, index=0)

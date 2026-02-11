@@ -270,6 +270,11 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
         """
         super().reset(seed=seed, **kwargs)
 
+        # Re-sync RandomMixin with the (possibly new) np_random generator.
+        # gym.Env.reset(seed=N) replaces self.np_random, but the mixin
+        # still holds the old generator captured during __init__.
+        RandomMixin.__init__(self, self.np_random)
+
         # Reset agents
         self.mission_space.seed(seed)
         self.mission = self.mission_space.sample()

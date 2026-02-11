@@ -6,7 +6,7 @@ This document explains the improvements made to the **Soccer environment** in MO
 
 ---
 
-## 🚨 Critical Bugs Fixed
+## Critical Bugs Fixed
 
 ### **Bug #1: Ball Disappears After Scoring**
 
@@ -15,12 +15,12 @@ This document explains the improvements made to the **Soccer environment** in MO
 # Old code in soccer_game.py line 204:
 if ball.index in (0, fwd_obj.index):
     self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
-    agent.state.carrying = None  # ← Ball DELETED, never respawns!
+    agent.state.carrying = None  # Ball DELETED, never respawns!
     return
 ```
 
 **Impact:**
-- Team scores a goal → ball disappears forever
+- Team scores a goal -- ball disappears forever
 - Episode continues for **9,900+ remaining steps** with no ball
 - Both teams search endlessly, finding nothing
 - Wasted computation, no learning signal for RL agents
@@ -45,7 +45,7 @@ if ball.index in (0, fwd_obj.index):
     return
 ```
 
-**Result:** ✅ Ball respawns after each goal, game continues until first team scores 2 goals
+**Result:** [FIXED] Ball respawns after each goal, game continues until first team scores 2 goals
 
 ---
 
@@ -68,7 +68,7 @@ if self.team_scores[team] >= self.goals_to_win:
         agent.state.terminated = True
 ```
 
-**Result:** ✅ Episode terminates when one team scores 2 goals (natural termination)
+**Result:** [FIXED] Episode terminates when one team scores 2 goals (natural termination)
 
 ---
 
@@ -81,25 +81,25 @@ if self.team_scores[team] >= self.goals_to_win:
 **Problem:**
 ```
 Red Agent's View:
-┌─────────┐
-│ W  W  W │  W = Wall
-│         │  . = Empty cell
-│ G→ .  . │  G = Green agent (but is Green carrying ball? ❌ Unknown!)
-│    ↑    │
-│ .  B  . │
-└─────────┘
++----------+
+| W  W  W  |  W = Wall
+|           |  . = Empty cell
+| G-> .  . |  G = Green agent (but is Green carrying ball? Unknown!)
+|    ^     |
+| .  B  .  |
++----------+
 
 # Observation encoding (before fix):
 obs[1, 0, 0] = 10  # Type: Agent
 obs[1, 0, 1] = 2   # Color: Green
-obs[1, 0, 2] = 2   # State: Direction (left) ← NO info about ball!
+obs[1, 0, 2] = 2   # State: Direction (left) -- NO info about ball!
 ```
 
 **Why this is critical:**
 - Red agent cannot see if Green agent is carrying the ball!
 - Stealing mechanic is blind - agents can't decide: "Should I chase this agent?"
 - Defense strategies impossible without memory (LSTM/GRU to track ball over time)
-- With 3×3 view, agents often see OTHER agents but NOT the ball itself
+- With 3x3 view, agents often see OTHER agents but NOT the ball itself
 
 **Root cause:**
 The 3-channel encoding only had space for:
@@ -175,13 +175,14 @@ direction = state_value % 100
 ```
 
 **Result:**
+
+Green Agent's View (after fix):
+
+<p align="center">
+  <img src="figures/green_agent_view_has_ball.png" width="200">
+</p>
+
 ```
-Red Agent's View (after fix):
-┌─────┐
-│ W W │
-│ G+B │  ← Green agent with ball visible!
-│ . . │
-└─────┘
 
 # Observation encoding (after fix):
 obs[1, 0, 0] = 10  # Type: Agent
@@ -206,7 +207,7 @@ direction = obs[1, 0, 2] % 100     # 2 (left)
 - Defense can focus on carrier, not random agents
 - Stealing becomes strategic, not random
 - No LSTM required for basic ball tracking
-- **Faster training** - agents have the information they need!
+- **Faster training** -- agents have the information they need!
 
 ---
 
@@ -218,36 +219,52 @@ direction = obs[1, 0, 2] % 100     # 2 (left)
 ```python
 # Agent 0's observation at its own position [1, 2] (bottom-center):
 obs[0]['image'][1, 2, :] = [Type.ball, Color.red, 0]
-#                           ↑
+#                           ^
 #                    "I have the ball!"
 
 # Agent 1's observation (no ball):
 obs[1]['image'][1, 2, :] = [Type.empty, Color.red, 0]
-#                           ↑
+#                           ^
 #                    "I don't have anything"
-# Note: empty uses Color.red (index 0) by default — only the Type matters here
+# Note: empty uses Color.red (index 0) by default -- only the Type matters here
 ```
 
 **Answer**: YES - Agents see what they're carrying at their own position.
 
 ---
 
-### Example 2: Teammate Awareness
+### Example 2: Teammate Awareness (Limitation and Solution)
 
-**Q: Can agent 1 learn to pass ball to teammate agent 0?**
-```python
-# Agent 1 (green) carrying ball sees:
-obs[1]['image'][1, 2, :] = [Type.ball, Color.red, 0]     # "I have ball"
-obs[1]['image'][2, 1, :] = [Type.agent, Color.green, 0]  # "Teammate in view"
-#                           ↑            ↑
-#                           Agent     Same color = teammate!
+**Q: Can agent 1 see where its teammate agent 0 is?**
 
-# Agent 1 can learn:
-# IF I have ball AND see green agent in my view → DROP to teleport-pass
-# Result: Instant pass! Ball transfers to agent 0
+**Answer: Rarely.** With `view_size=3`, each agent sees only a 3x3 window (9 cells)
+out of 126 playable cells on a 16x11 field. That is approximately **7% of the grid**.
+Teammates are almost never within 1 tile of each other during normal play.
+
+```
+Agent 1's 3x3 view on a 16x11 field:
+
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+|   |   |   | . | . | . |   |   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+|   |   |   | . |A1 | . |   |   |   |   |   |A0 |   |   |   |   |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+|   |   |   | . | . | . |   |   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+Agent 1 sees 9 cells (shaded) -- Agent 0 is 8 tiles away, INVISIBLE.
 ```
 
-**Answer**: YES - Agent has all information needed. Passing is a learned RL strategy.
+**Passing is still possible but blind.** The `DROP` action uses teleport passing:
+the ball warps to a random eligible teammate anywhere on the grid. The passer
+does NOT need to see the receiver. RL agents learn WHEN to pass (e.g., when
+near an opponent), not WHERE the teammate is.
+
+**For informed passing, use the TeamObs variant** (see below).
 
 ---
 
@@ -257,7 +274,7 @@ obs[1]['image'][2, 1, :] = [Type.agent, Color.green, 0]  # "Teammate in view"
 ```python
 # Agent 2 (blue) sees agent 1 (green) with ball:
 obs[2]['image'][1, 1, :] = [Type.agent, Color.green, 101]
-#                           ↑            ↑             ↑
+#                           ^            ^             ^
 #                           Agent     Opponent    STATE=101!
 #                                                (down + ball)
 
@@ -266,10 +283,10 @@ has_ball = (101 >= 100)  # True!
 direction = 101 % 100     # 1 (down)
 
 # Agent 2 can learn:
-# IF see opponent (different color) AND opponent has ball → steal with PICKUP
+# IF see opponent (different color) AND opponent has ball -> steal with PICKUP
 ```
 
-**Answer**: YES -  agents can see ball carriers and learn to steal!
+**Answer**: YES -- agents can see ball carriers and learn to steal (when within view).
 
 ---
 
@@ -288,13 +305,13 @@ direction = 101 % 100     # 1 (down)
 
 ---
 
-## 🎮 Game Mechanics Explained
+## Game Mechanics Explained
 
-### **1. Teleport Passing (Enhanced — replaces adjacency handoff)**
+### **1. Teleport Passing (Enhanced -- replaces adjacency handoff)**
 
 > **Change:** In `SoccerGameEnhancedEnv`, the `DROP` action uses **teleport
 > passing**. The ball instantly transfers to a random eligible teammate
-> **anywhere on the grid** — no adjacency required. The original
+> **anywhere on the grid** -- no adjacency required. The original
 > `SoccerGameEnv` keeps the old 1-cell adjacency handoff for backward
 > compatibility.
 
@@ -303,13 +320,13 @@ direction = 101 % 100     # 1 (down)
 def _handle_drop(self, agent_index, agent, rewards):
     fwd_pos = agent.front_pos
 
-    # ── Priority 1: Score at goal ──────────────────────────
+    # -- Priority 1: Score at goal -------------------------
     fwd_cell = self.grid.get(*fwd_pos)
     if fwd_cell and fwd_cell.type == Type.goal:
         ...   # scoring logic (unchanged)
         return
 
-    # ── Priority 2: Teleport pass to teammate ─────────────
+    # -- Priority 2: Teleport pass to teammate -------------
     eligible = [
         a for a in self.agents
         if a.team_index == agent.team_index      # same team
@@ -323,15 +340,15 @@ def _handle_drop(self, agent_index, agent, rewards):
         agent.state.carrying = None
         return
 
-    # ── Priority 3: Ground drop ───────────────────────────
+    # -- Priority 3: Ground drop ---------------------------
     if self.grid.get(*fwd_pos) is None:
         self.grid.set(*fwd_pos, agent.state.carrying)
         agent.state.carrying = None
 ```
 
 **Why teleport over adjacency?**
-- **Old (adjacency):** Agent must face teammate in the adjacent cell — extremely
-  hard for RL to coordinate 1-cell alignment on a 14×9 grid.
+- **Old (adjacency):** Agent must face teammate in the adjacent cell -- extremely
+  hard for RL to coordinate 1-cell alignment on a 14x9 grid.
 - **New (teleport):** Agent presses `DROP` and the ball warps to any free
   teammate. RL only needs to learn *when* to pass, not *where* to stand.
 
@@ -341,7 +358,7 @@ def _handle_drop(self, agent_index, agent, rewards):
 - **Emergent behavior:** MAPPO learns "one agent draws defenders, passes to open teammate near goal"
 - **Seeded RNG:** Uses `self.np_random.integers()` so results are reproducible
 
-**Real-world parallel:** Like a long-ball pass in real soccer — instant ball
+**Real-world parallel:** Like a long-ball pass in real soccer -- instant ball
 transfer to a better-positioned teammate anywhere on the pitch
 
 ---
@@ -384,38 +401,38 @@ def _handle_pickup(self, agent_index, agent, rewards):
 
 ---
 
-## 🏟️ New Map Layout (FIFA Aspect Ratio)
+## New Map Layout (FIFA Aspect Ratio)
 
-### **14×9 Playable Area (16×11 Total)**
+### **14x9 Playable Area (16x11 Total)**
 
 <p align="center">
   <img src="figures/14×9_Playable_Area_16×11_Total.png" width="600">
 </p>
 
-Inspired by FIFA recommended pitch dimensions (105m × 68m ≈ 1.54 ratio)
+Inspired by FIFA recommended pitch dimensions (105m x 68m = 1.54 ratio)
 
 ```
 Legend:
   W = Wall (impassable, auto-generated by grid.wall_rect())
   . = Empty cell (playable)
-  🟩 = Team 1 (Green) goal — left side at (1, 5) — Red team scores here
-  🟦 = Team 2 (Red) goal — right side at (14, 5) — Green team scores here
+  G1 = Team 1 (Green) goal -- left side at (1, 5) -- Red team scores here
+  G2 = Team 2 (Red) goal -- right side at (14, 5) -- Green team scores here
 
 Game Setup:
-  - Ball: Red colored 🔴 (wildcard, spawns randomly)
-  - Green team (index=1): Agents 0 & 1 — defend left goal 🟩, score at right goal 🟦
-  - Blue team (index=2): Agents 2 & 3 — defend right goal 🟦, score at left goal 🟩
+  - Ball: Red colored (wildcard, spawns randomly)
+  - Green team (index=1): Agents 0 & 1 -- defend left goal G1, score at right goal G2
+  - Blue team (index=2): Agents 2 & 3 -- defend right goal G2, score at left goal G1
 ```
 
 **Dimensions:**
-- **Total:** 16×11 (176 cells)
+- **Total:** 16x11 (176 cells)
 - **Walls:** 50 cells (outer boundary)
 - **Goals:** 2 cells (fixed positions)
-- **Playable:** 14×9 = **126 empty cells**
+- **Playable:** 14x9 = **126 empty cells**
 
 **Goal positions:**
-- Red (team 1): `(1, 5)` — left side, vertical center
-- Blue (team 2): `(14, 5)` — right side, vertical center
+- Red (team 1): `(1, 5)` -- left side, vertical center
+- Blue (team 2): `(14, 5)` -- right side, vertical center
 
 ---
 
@@ -430,10 +447,10 @@ Game Setup:
 | **Win (2 goals)** | Episode terminates | Natural termination signal |
 
 **Why only scoring gives reward?**
-- ✅ **Clear objective:** Score 2 goals to win (simple for RL)
-- ✅ **No exploitation:** Can't win by stealing/passing forever
-- ✅ **Emergent strategy:** Must balance offense/defense/coordination
-- ✅ **Sparse but learnable:** Clear reward signal on goals
+- **Clear objective:** Score 2 goals to win (simple for RL)
+- **No exploitation:** Can't win by stealing/passing forever
+- **Emergent strategy:** Must balance offense/defense/coordination
+- **Sparse but learnable:** Clear reward signal on goals
 
 ---
 
@@ -446,7 +463,7 @@ Game Setup:
 - Random actions, accidental goals
 
 **Phase 2: Basic Scoring (50k-200k episodes)**
-- Learn sequence: pickup → navigate → score
+- Learn sequence: pickup -> navigate -> score
 - Solo play, no coordination
 
 **Phase 3: Stealing & Defense (200k-500k episodes)**
@@ -454,7 +471,7 @@ Game Setup:
 - Basic defensive positioning
 - Chase opponents with ball
 
-**Phase 4: Role Specialization (500k-1M episodes)** 
+**Phase 4: Role Specialization (500k-1M episodes)**
 - **Offensive specialist:** Picks ball, uses teammate as shield, rushes to score
 - **Defensive specialist:** Guards own goal, intercepts opponents
 - **Passing coordination:** Offensive agent passes to better-positioned teammate
@@ -467,15 +484,14 @@ Game Setup:
 
 ---
 
-## Environment Naming - Complete Separation
+## Environment Registry
 
-### **Original Environment (Deprecated)**
+### **MosaicMultiGrid-Soccer-v0** (Deprecated)
 
-**Name:** `MosaicMultiGrid-Soccer-v0`
-**Status:** ⚠️ Deprecated - kept for backward compatibility only
+**Status:** Deprecated -- kept for backward compatibility only
 
 ```python
-# ❌ Old environment (broken, not recommended)
+# Old environment (broken, not recommended)
 env = gym.make('MosaicMultiGrid-Soccer-v0')
 obs, _ = env.reset()
 
@@ -489,13 +505,12 @@ obs, _ = env.reset()
 
 ---
 
-### **Enhanced Environment (Recommended)**
+### **MosaicMultiGrid-Soccer-Enhanced-v0** (Recommended)
 
-**Name:** `MosaicMultiGrid-Soccer-Enhanced-v0` ✨
-**Status:** ✅ Recommended for all new RL research
+**Status:** [RECOMMENDED] For RL training with independent agent views
 
 ```python
-# ✅ Enhanced environment (fixed, recommended)
+# Enhanced environment (fixed, recommended)
 env = gym.make(
     'MosaicMultiGrid-Soccer-Enhanced-v0',
     max_steps=200,      # Shorter episodes for RL
@@ -507,50 +522,113 @@ for step in range(200):
     actions = {i: policy(obs[i]) for i in range(4)}
     obs, rewards, terminated, truncated, info = env.step(actions)
 
-    if terminated[0]:  # ✅ Team scored 2 goals!
+    if terminated[0]:  # Team scored 2 goals!
         winner = "Green" if rewards[0] > 0 else "Red"
         print(f"{winner} team wins!")
         break
 ```
 
 **Features:**
-- ✅ Ball respawns after each goal
-- ✅ Terminates when team scores 2 goals
-- ✅ STATE channel encodes ball carrying (observability fixed)
-- ✅ Dual cooldown on stealing (prevents ping-pong)
-- ✅ Teleport passing to any teammate (replaces adjacency handoff)
-- ✅ FIFA-style 14×9 playable area (16×11 total)
+- Ball respawns after each goal
+- Terminates when team scores 2 goals
+- STATE channel encodes ball carrying (observability fixed)
+- Dual cooldown on stealing (prevents ping-pong)
+- Teleport passing to any teammate (replaces adjacency handoff)
+- FIFA-style 14x9 playable area (16x11 total)
+
+**Observation model:** Independent agent views. Each agent sees only its
+3x3 local window. No knowledge of teammate positions outside the window.
+Passing is blind (teleport to random eligible teammate).
+
+---
+
+### **MosaicMultiGrid-Soccer-TeamObs-v0** (Recommended for team coordination)
+
+**Status:** [RECOMMENDED] For RL training requiring team coordination
+
+```python
+# TeamObs variant -- SMAC-style teammate awareness
+env = gym.make(
+    'MosaicMultiGrid-Soccer-TeamObs-v0',
+    render_mode='rgb_array',
+)
+obs, _ = env.reset()
+
+# Each agent's observation now includes:
+print(obs[0].keys())
+# dict_keys(['image', 'direction', 'mission',
+#            'teammate_positions', 'teammate_directions', 'teammate_has_ball'])
+
+# Teammate features for agent 0:
+print(obs[0]['teammate_positions'])    # [[dx, dy]] relative to self (shape: N x 2)
+print(obs[0]['teammate_directions'])   # [dir]  teammate facing direction (shape: N)
+print(obs[0]['teammate_has_ball'])     # [0/1]  is teammate carrying ball? (shape: N)
+```
+
+**What it adds** (over Soccer-Enhanced-v0):
+
+| Feature | Shape | Description |
+|---------|-------|-------------|
+| `teammate_positions` | (N, 2) int64 | Relative (dx, dy) from self to each teammate |
+| `teammate_directions` | (N,) int64 | Direction each teammate faces (0-3) |
+| `teammate_has_ball` | (N,) int64 | 1 if teammate carries ball, 0 otherwise |
+
+Where N = number of teammates (1 in Soccer 2v2).
+
+**What stays the same:** The 3x3 local `image`, `direction`, and `mission`
+are preserved unchanged from Soccer-Enhanced-v0. TeamObs only ADDS new keys.
+
+**Why this exists:** On a 16x11 field with `view_size=3`, agents see only 7%
+of the grid. Teammates are almost never visible in the 3x3 window. Without
+TeamObs, passing is entirely blind. With TeamObs, agents can learn informed
+passing strategies (e.g., "pass when teammate is near opponent goal").
+
+**Design rationale -- SMAC observation pattern:**
+
+This follows the standard MARL observation augmentation pattern established
+by SMAC (Samvelyan et al., 2019). In SMAC, each agent receives its local
+view unchanged, plus structured features about allies (relative positions,
+health, unit type). This is the standard approach in cooperative MARL:
+
+> Samvelyan, M., Rashid, T., de Witt, C. S., et al. (2019).
+> "The StarCraft Multi-Agent Challenge." CoRR, abs/1902.04043.
+
+The key insight: teammate features are **environment-level** observation
+augmentation, not a training-time trick. The environment provides richer
+observations; the RL algorithm decides what to do with them. This is
+orthogonal to CTDE (Centralized Training, Decentralized Execution), which
+is a training architecture choice.
 
 ---
 
 ### **Environment Comparison**
 
-| Aspect | `Soccer-v0` (Original) | `Soccer-Enhanced-v0` (New) |
-|--------|------------------------|----------------------------|
-| **Status** | ⚠️ Deprecated | ✅ Recommended |
-| **Ball respawn** | ❌ Disappears forever | ✅ Respawns after goal |
-| **Termination** | Never | First to 2 goals |
-| **Observability** | ❌ Can't see ball carrier | ✅ STATE channel encoding |
-| **Cooldown** | ❌ None (exploit) | ✅ 10-step dual cooldown |
-| **Passing** | 1-cell adjacency handoff | ✅ Teleport to any teammate |
-| **Map size** | 15×10 | 16×11 (FIFA ratio) |
-| **Episode length** | 10,000 steps | 200 steps avg |
-| **Training time** | ~6 weeks | ~3 weeks |
-| **Use case** | Backward compat only | RL research |
+| Aspect | `Soccer-v0` | `Soccer-Enhanced-v0` | `Soccer-TeamObs-v0` |
+|--------|-------------|---------------------|---------------------|
+| **Status** | Deprecated | Recommended | Recommended |
+| **Ball respawn** | No | Yes | Yes |
+| **Termination** | Never | First to 2 goals | First to 2 goals |
+| **Observability** | No ball carrier info | STATE channel encoding | STATE + teammate features |
+| **Teammate info** | None | None (independent views) | Positions + directions + has_ball |
+| **Passing strategy** | N/A (broken) | Blind teleport | Informed (knows teammate location) |
+| **Cooldown** | None | 10-step dual | 10-step dual |
+| **Map size** | 15x10 | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) |
+| **Use case** | Legacy only | Standard RL training | Team coordination research |
 
 ---
 
-## ✅ Summary of Improvements
+## Summary of Improvements
 
-| Issue | Before (v1.0.2) | After (v1.1.0) |
+| Issue | Before (v1.0.2) | After (v2.0.0) |
 |-------|-----------------|----------------|
-| Ball respawn | ❌ Ball disappears | ✅ Respawns at random |
-| Termination | ❌ 10,000 steps always | ✅ First to 2 goals |
-| Observability | ❌ Can't see ball carrier | ✅ STATE channel + visual |
-| Cooldown | ❌ None (infinite stealing) | ✅ 10-step dual cooldown |
-| Passing | Adjacency handoff (1 cell) | ✅ Teleport to any teammate |
-| Map size | 15×10 | ✅ 16×11 (FIFA ratio) |
-| Training time | ~6 weeks | ✅ ~3 weeks (natural termination) |
+| Ball respawn | Ball disappears | [FIXED] Respawns at random |
+| Termination | 10,000 steps always | [FIXED] First to 2 goals |
+| Observability | Can't see ball carrier | [FIXED] STATE channel + visual |
+| Cooldown | None (infinite stealing) | [FIXED] 10-step dual cooldown |
+| Passing | Adjacency handoff (1 cell) | [FIXED] Teleport to any teammate |
+| Map size | 15x10 | [FIXED] 16x11 (FIFA ratio) |
+| Teammate awareness | None (independent views) | [NEW] TeamObs variant (SMAC-style) |
+| Training time | ~6 weeks | [IMPROVED] ~3 weeks (natural termination) |
 
 ---
 
@@ -560,5 +638,4 @@ These improvements transform Soccer from a broken environment into a **research-
 - Multi-agent coordination (passing, role specialization)
 - Competitive team play (zero-sum, offense/defense balance)
 - Emergent strategic behavior (MAPPO role discovery)
-
-
+- Controlled observation ablation studies (Independent vs TeamObs)
