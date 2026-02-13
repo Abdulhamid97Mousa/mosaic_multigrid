@@ -210,7 +210,7 @@ class TestRegisteredTeamObsEnvs:
 
     @pytest.mark.parametrize("env_id,n_agents", [
         ("MosaicMultiGrid-Soccer-TeamObs-v0", 4),
-        ("MosaicMultiGrid-Collect2vs2-TeamObs-v0", 4),
+        ("MosaicMultiGrid-Collect-2vs2-TeamObs-v0", 4),
     ])
     def test_gym_make(self, env_id, n_agents):
         """Environment should be creatable via gym.make()."""

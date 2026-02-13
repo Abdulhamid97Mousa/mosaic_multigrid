@@ -156,7 +156,7 @@ Example scores: Agent 0: +3, Agent 1: +1, Agent 2: +1 -> Agent 0 wins!
 
 **Gameplay:**
 ```python
-env = gym.make('MosaicMultiGrid-Collect2vs2-v0')
+env = gym.make('MosaicMultiGrid-Collect-2vs2-v0')
 
 Episode flow:
 1. 7 balls spawn at random positions
@@ -265,12 +265,12 @@ its own team (`agents_index=[1,2,3]`), meaning N=0 teammates per agent.
 
 ---
 
-### **MosaicMultiGrid-Collect2vs2-Enhanced-v0** (Recommended)
+### **MosaicMultiGrid-Collect-2vs2-Enhanced-v0** (Recommended)
 
 **Status:** [RECOMMENDED] For 2v2 team competition with independent views
 
 ```python
-env = gym.make('MosaicMultiGrid-Collect2vs2-Enhanced-v0', max_steps=300)
+env = gym.make('MosaicMultiGrid-Collect-2vs2-Enhanced-v0', max_steps=300)
 obs, _ = env.reset()
 ```
 
@@ -279,13 +279,13 @@ obs, _ = env.reset()
 
 ---
 
-### **MosaicMultiGrid-Collect2vs2-TeamObs-v0** (Recommended for team coordination)
+### **MosaicMultiGrid-Collect-2vs2-TeamObs-v0** (Recommended for team coordination)
 
 **Status:** [RECOMMENDED] For 2v2 team competition with teammate awareness
 
 ```python
 # TeamObs variant -- SMAC-style teammate awareness
-env = gym.make('MosaicMultiGrid-Collect2vs2-TeamObs-v0', render_mode='rgb_array')
+env = gym.make('MosaicMultiGrid-Collect-2vs2-TeamObs-v0', render_mode='rgb_array')
 obs, _ = env.reset()
 
 # Each agent's observation now includes teammate features:
@@ -298,7 +298,7 @@ print(obs[0]['teammate_positions'])    # [[dx, dy]] relative position
 print(obs[0]['teammate_has_ball'])     # [0/1] carrying status
 ```
 
-**What it adds** (over Collect2vs2-Enhanced-v0):
+**What it adds** (over Collect-2vs2-Enhanced-v0):
 
 | Feature | Shape | Description |
 |---------|-------|-------------|
@@ -320,7 +320,7 @@ learn to split coverage (e.g., "teammate is in top-right, I go bottom-left").
 
 ### **Environment Comparison**
 
-| Aspect | `Collect-v0` | `Collect-Enhanced-v0` | `Collect2vs2-Enhanced-v0` | `Collect2vs2-TeamObs-v0` |
+| Aspect | `Collect-v0` | `Collect-Enhanced-v0` | `Collect-2vs2-Enhanced-v0` | `Collect-2vs2-TeamObs-v0` |
 |--------|-------------|----------------------|--------------------------|--------------------------|
 | **Status** | Deprecated | Recommended | Recommended | Recommended |
 | **Agents** | 3 (individual) | 3 (individual) | 4 (2v2 teams) | 4 (2v2 teams) |

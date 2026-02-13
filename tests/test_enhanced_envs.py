@@ -641,7 +641,7 @@ class TestEnhancedGymMake:
         env.close()
 
     def test_collect2vs2_enhanced_registered(self):
-        env = gym.make('MosaicMultiGrid-Collect2vs2-Enhanced-v0')
+        env = gym.make('MosaicMultiGrid-Collect-2vs2-Enhanced-v0')
         assert env.unwrapped.num_agents == 4
         env.close()
 

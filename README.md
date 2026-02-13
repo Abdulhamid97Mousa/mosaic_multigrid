@@ -103,7 +103,7 @@ Individual competitive collection. 3 agents compete individually to collect the 
 **Default variant:** `CollectGame3HEnv10x10N3` — 3 agents, 10×10 grid, 5 wildcard balls, zero-sum.  
 **Enhanced variant:** `CollectGame3HEnhancedEnv10x10N3` — Natural termination when all balls collected (35× faster).
 
-### Collect2vs2Game (Team-Based Collection)
+### Collect-2vs2 Game (Team-Based Collection)
 
 <p align="center">
   <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_3_Gym-MosaicMultiGrid-Collect2vs2-Enhanced-v0.png" width="400">
@@ -112,6 +112,19 @@ Individual competitive collection. 3 agents compete individually to collect the 
 Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect the most balls. Similar to Soccer but without goals — agents earn points directly by picking up balls. **7 balls ensures no draws!**
 
 **Default variant:** `CollectGame4HEnv10x10N2` — 4 agents (2v2), 10×10 grid, 7 wildcard balls.
+
+### Soccer 1vs1 (IndAgObs)
+
+1v1 variant of the Soccer environment on the same 16x11 FIFA-style grid. Two agents (one per team) compete head-to-head. Teleport passing is a no-op (no teammates), making this a purely individual duel of ball control, stealing, and scoring. First to 2 goals wins.
+
+**IndAgObs variant:** `SoccerGame2HIndAgObsEnv16x11N2` -- 2 agents (1v1), 16x11 grid, 1 ball, zero-sum, max_steps=200.
+
+### Collect 1vs1 (Team-Based Collection)
+
+1v1 variant of the team-based Collect environment. Two agents on separate teams compete to collect 3 wildcard balls on a 10x10 grid. **3 balls (odd number) ensures no draws.** Natural termination when all balls are collected.
+
+**IndAgObs variant (recommended):** `CollectGame2HIndAgObsEnv10x10N2` -- 2 agents (1v1), 10x10 grid, 3 balls, zero-sum, max_steps=200.
+**Base variant (deprecated):** `CollectGame2HEnv10x10N2` -- same configuration, max_steps=10,000.
 
 ### BasketballGame (3vs3 -- New in v4.0.0)
 
@@ -137,13 +150,16 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 | **MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0** | New (v4.0.0) | 3vs3 basketball, 19x11 court, teleport passing, basketball-court rendering |
 | **MosaicMultiGrid-Basketball-3vs3-TeamObs-v0** | New (v4.0.0) | Basketball 3vs3 + SMAC-style teammate awareness (2 teammates per agent) |
 | **MosaicMultiGrid-Soccer-TeamObs-v0** | New (v4.0.0) | Soccer IndAgObs + SMAC-style teammate awareness (positions, directions, has_ball) |
-| **MosaicMultiGrid-Collect2vs2-TeamObs-v0** | New (v4.0.0) | Collect 2v2 IndAgObs + SMAC-style teammate awareness |
+| **MosaicMultiGrid-Collect-2vs2-TeamObs-v0** | New (v4.0.0) | Collect 2v2 IndAgObs + SMAC-style teammate awareness |
 | **MosaicMultiGrid-Soccer-IndAgObs-v0** | New (v4.0.0) | Ball respawns after goals, first-to-2-goals termination, dual cooldown on stealing, 16x11 FIFA aspect ratio |
 | **MosaicMultiGrid-Collect-IndAgObs-v0** | New (v4.0.0) | Natural termination when all balls collected, 35x faster training (300 vs 10,000 steps) |
-| **MosaicMultiGrid-Collect2vs2-IndAgObs-v0** | New (v4.0.0) | Natural termination, 7 balls (odd number prevents draws), team coordination |
+| **MosaicMultiGrid-Collect-2vs2-IndAgObs-v0** | New (v4.0.0) | Natural termination, 7 balls (odd number prevents draws), team coordination |
+| **MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0** | New | 1v1 soccer, same FIFA grid, pure individual play |
+| **MosaicMultiGrid-Collect-1vs1-IndAgObs-v0** | New | 1v1 collection, 3 balls (no draws), natural termination |
+| **MosaicMultiGrid-Collect-1vs1-v0** | New | 1v1 base collection (deprecated, use IndAgObs) |
 | MosaicMultiGrid-Soccer-v0 | Deprecated | Ball disappears after scoring, no termination, runs 10,000 steps always |
 | MosaicMultiGrid-Collect-v0 | Deprecated | No termination signal after all balls collected, wastes computation |
-| MosaicMultiGrid-Collect2vs2-v0 | Deprecated | No termination signal after all balls collected |
+| MosaicMultiGrid-Collect-2vs2-v0 | Deprecated | No termination signal after all balls collected |
 
 ### Critical Bugs Fixed
 
@@ -477,7 +493,7 @@ for step in range(300):
 
 ---
 
-#### Collect Enhanced 2vs2 (MosaicMultiGrid-Collect2vs2-Enhanced-v0) RECOMMENDED
+#### Collect Enhanced 2vs2 (MosaicMultiGrid-Collect-2vs2-Enhanced-v0) RECOMMENDED
 
 | Criterion | Condition |
 |-----------|-----------|
@@ -490,7 +506,7 @@ for step in range(300):
 | **Team Assignment** | agents_index=[1, 1, 2, 2] → Team 1 (agents 0,1) vs Team 2 (agents 2,3) |
 
 ```python
-env = gym.make('MosaicMultiGrid-Collect2vs2-Enhanced-v0')
+env = gym.make('MosaicMultiGrid-Collect-2vs2-Enhanced-v0')
 obs, _ = env.reset(seed=42)
 
 for step in range(400):
@@ -502,6 +518,71 @@ for step in range(400):
         team2_score = sum(rewards[i] for i in [2, 3])
         winner = "Team 1 (Green)" if team1_score > team2_score else "Team 2 (Red)"
         print(f"{winner} wins!")
+        break
+```
+
+---
+
+#### Soccer 1vs1 (MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0)
+
+| Criterion | Condition |
+|-----------|-----------|
+| **Terminated** | When any agent scores 2 goals (first-to-win) |
+| **Truncated** | When `max_steps >= 200` (configurable) |
+| **Winning Condition** | First agent to score `goals_to_win` (default: 2) wins |
+| **Scoring Mechanism** | Drop ball at opponent's goal: +1 to scorer, -1 to opponent (zero-sum) |
+| **Ball Respawn** | Ball respawns at random location after each goal |
+| **Episode Length** | Variable (terminates when agent wins, or truncates at 200 steps) |
+| **Passing** | Teleport pass is a no-op (no teammates) -- drop always places ball on ground |
+
+```python
+env = gym.make('MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0')
+obs, _ = env.reset(seed=42)
+
+for step in range(200):
+    actions = {i: agent_policy(obs[i]) for i in range(2)}
+    obs, rewards, terminated, truncated, info = env.step(actions)
+
+    if terminated[0]:  # An agent scored 2 goals!
+        winner = "Agent 0 (Green)" if rewards[0] > 0 else "Agent 1 (Red)"
+        print(f"{winner} wins! Episode finished in {step} steps")
+        break
+
+    if truncated[0]:  # Time limit reached
+        print(f"Time limit reached. Determine winner by cumulative score.")
+        break
+```
+
+---
+
+#### Collect 1vs1 (MosaicMultiGrid-Collect-1vs1-IndAgObs-v0)
+
+| Criterion | Condition |
+|-----------|-----------|
+| **Terminated** | When all 3 balls are collected |
+| **Truncated** | When `max_steps = 200` (configurable) |
+| **Winning Condition** | Agent with highest cumulative reward when episode ends |
+| **Scoring Mechanism** | Pickup wildcard ball: +1 to agent, -1 to opponent (zero-sum) |
+| **Episode Length** | Variable (terminates when all 3 balls collected, or truncates at 200 steps) |
+| **Ball Count** | 3 balls (ODD number prevents draws!) |
+| **Team Assignment** | agents_index=[1, 2] -- each agent is its own team |
+
+```python
+env = gym.make('MosaicMultiGrid-Collect-1vs1-IndAgObs-v0')
+obs, _ = env.reset(seed=42)
+cumulative_rewards = {i: 0 for i in range(2)}
+
+for step in range(200):
+    actions = {i: agent_policy(obs[i]) for i in range(2)}
+    obs, rewards, terminated, truncated, info = env.step(actions)
+
+    for i in range(2):
+        cumulative_rewards[i] += rewards[i]
+
+    if terminated[0]:  # All 3 balls collected!
+        winner = max(cumulative_rewards, key=cumulative_rewards.get)
+        print(f"Agent {winner} wins! Episode finished in {step} steps")
+        print(f"Final scores: {cumulative_rewards}")
         break
 ```
 
@@ -544,7 +625,7 @@ for step in range(10000):
         break
 ```
 
-#### Collect2vs2Game (MosaicMultiGrid-Collect2vs2-v0) - 4 Agents, Team Competition
+#### Collect-2vs2 Game (MosaicMultiGrid-Collect-2vs2-v0) - 4 Agents, Team Competition
 
 | Criterion | Condition |
 |-----------|-----------|
@@ -559,7 +640,7 @@ for step in range(10000):
 **Design rationale**: Using 7 balls (odd number) mathematically guarantees no draws (one team must collect ≥4, other ≤3). Fixed-length episodes with team-based zero-sum rewards create strategic team coordination challenges.
 
 ```python
-env = gym.make('MosaicMultiGrid-Collect2vs2-v0')
+env = gym.make('MosaicMultiGrid-Collect-2vs2-v0')
 obs, _ = env.reset(seed=42)
 cumulative_rewards = {i: 0 for i in range(4)}
 

@@ -231,6 +231,37 @@ class CollectGame4HEnv10x10N2(CollectGameEnv):
         )
 
 
+class CollectGame2HEnv10x10N2(CollectGameEnv):
+    """2 agents in 2 teams (1v1), 10x10 grid, team-based ball collection.
+
+    Simplified 1v1 variant for faster training iteration.
+    One green agent vs one red agent compete to collect 3 wildcard balls.
+
+    Teams:
+    - Team 1 (Green): Agent 0
+    - Team 2 (Red): Agent 1
+
+    Balls:
+    - 3 wildcard balls (ODD number prevents draws!)
+    - Zero-sum: When one team collects, the other gets negative reward
+
+    Termination:
+    - Truncated after max_steps (default: 10,000)
+    - No natural termination (game runs until time limit)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(
+            size=10,
+            num_balls=[3],  # 3 balls = ODD number to prevent draws!
+            agents_index=[1, 2],  # 1v1 teams (Green vs Red)
+            balls_index=[0],  # Wildcard balls
+            balls_reward=[1],  # 1 point per ball
+            zero_sum=True,  # Competitive zero-sum
+            **kwargs,
+        )
+
+
 # -----------------------------------------------------------------------
 # IndAgObs variants (Individual Agent Observations) - Fixed for RL training
 # -----------------------------------------------------------------------
@@ -313,6 +344,28 @@ class CollectGame4HIndAgObsEnv10x10N2(CollectGameIndAgObsEnv):
             size=10,
             num_balls=[7],  # 7 balls = ODD number to prevent draws!
             agents_index=[1, 1, 2, 2],  # 2v2 teams (Green vs Red)
+            balls_index=[0],  # Wildcard balls
+            balls_reward=[1],  # 1 point per ball
+            zero_sum=True,  # Competitive zero-sum
+            **kwargs,
+        )
+
+
+class CollectGame2HIndAgObsEnv10x10N2(CollectGameIndAgObsEnv):
+    """IndAgObs 1v1 team competition with natural termination.
+
+    RECOMMENDED for RL training. Terminates when all 3 balls collected.
+    3 balls (odd number) prevents draws! Simplified 1v1 variant for
+    faster training iteration (2 agents collecting 3 balls is fast).
+    """
+
+    def __init__(self, **kwargs):
+        # Set default max_steps for RL training (can be overridden)
+        kwargs.setdefault('max_steps', 200)
+        super().__init__(
+            size=10,
+            num_balls=[3],  # 3 balls = ODD number to prevent draws!
+            agents_index=[1, 2],  # 1v1 teams (Green vs Red)
             balls_index=[0],  # Wildcard balls
             balls_reward=[1],  # 1 point per ball
             zero_sum=True,  # Competitive zero-sum

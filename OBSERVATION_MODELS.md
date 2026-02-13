@@ -664,8 +664,8 @@ MOSAIC multigrid provides paired variants for direct comparison:
 
 | Environment ID | Observation Model | Use Case |
 |---|---|---|
-| `MosaicMultiGrid-Collect2vs2-Enhanced-v0` | IndObs | Baseline (individual play) |
-| `MosaicMultiGrid-Collect2vs2-TeamObs-v0` | TeamObs | Team coordination research |
+| `MosaicMultiGrid-Collect-2vs2-Enhanced-v0` | IndObs | Baseline (individual play) |
+| `MosaicMultiGrid-Collect-2vs2-TeamObs-v0` | TeamObs | Team coordination research |
 
 Note: The individual Collect variant (`MosaicMultiGrid-Collect-Enhanced-v0`) has 3
 agents on 3 separate teams (N=0 teammates per agent). TeamObs produces empty arrays

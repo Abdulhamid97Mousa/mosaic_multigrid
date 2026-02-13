@@ -208,15 +208,16 @@ class SoccerGameEnv(MultiGridEnv):
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Try scoring on an ObjectGoal
+        # Try scoring on an ObjectGoal (must be opposing team's goal)
         if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
             ball = agent.state.carrying
             if fwd_obj.target_type == ball.type.value:
                 # Ball index 0 is wildcard (can score at any goal)
                 if ball.index in (0, fwd_obj.index):
-                    self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
-                    agent.state.carrying = None
-                    return
+                    if fwd_obj.index != agent.team_index:  # no own-goals
+                        self._team_reward(agent.team_index, rewards, fwd_obj.reward)
+                        agent.state.carrying = None
+                        return
 
         # Try passing to another agent
         target = self._agent_at(fwd_pos)
@@ -411,28 +412,29 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Priority 1: Try scoring on an ObjectGoal
+        # Priority 1: Try scoring on opposing team's ObjectGoal
         if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
             ball = agent.state.carrying
             if fwd_obj.target_type == ball.type.value:
                 # Ball index 0 is wildcard (can score at any goal)
                 if ball.index in (0, fwd_obj.index):
-                    self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
-                    agent.state.carrying = None
+                    if fwd_obj.index != agent.team_index:  # no own-goals
+                        self._team_reward(agent.team_index, rewards, fwd_obj.reward)
+                        agent.state.carrying = None
 
-                    # Respawn ball with same color and team index
-                    new_ball = Ball(
-                        color=ball.color,
-                        index=ball.index,
-                    )
-                    self.place_obj(new_ball)
+                        # Respawn ball with same color and team index
+                        new_ball = Ball(
+                            color=ball.color,
+                            index=ball.index,
+                        )
+                        self.place_obj(new_ball)
 
-                    # Track team score and check win condition
-                    self.team_scores[fwd_obj.index] += 1
-                    if self.team_scores[fwd_obj.index] >= self.goals_to_win:
-                        for a in self.agents:
-                            a.state.terminated = True
-                    return
+                        # Track team score and check win condition
+                        self.team_scores[agent.team_index] += 1
+                        if self.team_scores[agent.team_index] >= self.goals_to_win:
+                            for a in self.agents:
+                                a.state.terminated = True
+                        return
 
         # Priority 2: Teleport pass to a teammate (anywhere on the grid)
         teammates = [
@@ -456,11 +458,11 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
 
 
 class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
-    """IndAgObs 2v2 Soccer with FIFA aspect ratio (16×11 total, 14×9 playable).
+    """IndAgObs 2v2 Soccer with FIFA aspect ratio (16x11 total, 14x9 playable).
 
     RECOMMENDED for RL training. Key features:
-    - 16×11 grid (FIFA 105m × 68m ≈ 1.54 ratio)
-    - 14×9 playable area (126 cells)
+    - 16x11 grid (FIFA 105m x 68m = 1.54 ratio)
+    - 14x9 playable area (126 cells)
     - Goals at (1,5) and (14,5) - vertical center
     - First to 2 goals wins
     - Ball respawns after each goal
@@ -480,6 +482,41 @@ class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             goal_index=[1, 2],
             num_balls=[1],
             agents_index=[1, 1, 2, 2],  # 2v2 teams
+            balls_index=[0],  # Wildcard ball
+            zero_sum=True,
+            **kwargs,
+        )
+
+
+class SoccerGame2HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
+    """IndAgObs 1v1 Soccer with FIFA aspect ratio (16x11 total, 14x9 playable).
+
+    Simplified 1v1 variant for faster training iteration. Same grid and
+    mechanics as 2v2 but with 1 agent per team. Teleport passing becomes
+    a no-op (no teammates), making this pure individual play.
+
+    Key features:
+    - 16x11 grid (same FIFA ratio as 2v2)
+    - 1 agent per team (Green vs Red)
+    - Goals at (1,5) and (14,5) - vertical center
+    - First to 2 goals wins
+    - Ball respawns after each goal
+    - 10-step dual cooldown on stealing
+    - 200 max_steps
+    """
+
+    def __init__(self, **kwargs):
+        # Set default max_steps for RL training (can be overridden)
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None,
+            width=16,  # FIFA-style width
+            height=11,  # FIFA-style height
+            goal_pos=[[1, 5], [14, 5]],  # Goals at vertical center
+            goal_index=[1, 2],
+            num_balls=[1],
+            agents_index=[1, 2],  # 1v1 teams (Green vs Red)
             balls_index=[0],  # Wildcard ball
             zero_sum=True,
             **kwargs,

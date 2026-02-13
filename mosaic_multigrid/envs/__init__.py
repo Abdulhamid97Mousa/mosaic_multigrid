@@ -12,14 +12,17 @@ from .soccer_game import (
     SoccerGame4HEnv10x15N2,
     SoccerGameIndAgObsEnv,
     SoccerGame4HIndAgObsEnv16x11N2,
+    SoccerGame2HIndAgObsEnv16x11N2,
 )
 from .collect_game import (
     CollectGameEnv,
     CollectGame3HEnv10x10N3,  # 3 agents, individual competition
     CollectGame4HEnv10x10N2,  # 4 agents, 2v2 teams
+    CollectGame2HEnv10x10N2,  # 2 agents, 1v1 teams
     CollectGameIndAgObsEnv,
     CollectGame3HIndAgObsEnv10x10N3,  # 3 agents, IndAgObs with natural termination
     CollectGame4HIndAgObsEnv10x10N2,  # 4 agents 2v2, IndAgObs with natural termination
+    CollectGame2HIndAgObsEnv10x10N2,  # 2 agents 1v1, IndAgObs with natural termination
 )
 from .basketball_game import (
     BasketballGameEnv,
@@ -37,8 +40,9 @@ from ..wrappers import TeamObsWrapper
 # to each agent's observation dict. Follows the observation augmentation
 # pattern from SMAC (Samvelyan et al., 2019).
 #
-# Only defined for team-based environments (2v2). The 3-agent Collect
+# Only defined for team-based environments (2v2+). The 3-agent Collect
 # has agents_index=[1,2,3] (each agent = own team, no teammates).
+# 1v1 environments also have no teammates, so no TeamObs variants.
 # -----------------------------------------------------------------------
 
 class SoccerTeamObsEnv(TeamObsWrapper):
@@ -78,14 +82,17 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     # -----------------------------------------------------------------------
     'MosaicMultiGrid-Soccer-v0': (SoccerGame4HEnv10x15N2, {}),
     'MosaicMultiGrid-Collect-v0': (CollectGame3HEnv10x10N3, {}),  # 3-agent individual
-    'MosaicMultiGrid-Collect2vs2-v0': (CollectGame4HEnv10x10N2, {}),  # 4-agent teams
+    'MosaicMultiGrid-Collect-2vs2-v0': (CollectGame4HEnv10x10N2, {}),  # 4-agent teams
+    'MosaicMultiGrid-Collect-1vs1-v0': (CollectGame2HEnv10x10N2, {}),  # 2-agent 1v1 teams
 
     # -----------------------------------------------------------------------
     # IndAgObs environments (v1.1.0) - RECOMMENDED for RL training
     # -----------------------------------------------------------------------
     'MosaicMultiGrid-Soccer-IndAgObs-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
+    'MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0': (SoccerGame2HIndAgObsEnv16x11N2, {}),
     'MosaicMultiGrid-Collect-IndAgObs-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
-    'MosaicMultiGrid-Collect2vs2-IndAgObs-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
+    'MosaicMultiGrid-Collect-2vs2-IndAgObs-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
+    'MosaicMultiGrid-Collect-1vs1-IndAgObs-v0': (CollectGame2HIndAgObsEnv10x10N2, {}),
 
     # -----------------------------------------------------------------------
     # TeamObs environments (v2.0.0) - SMAC-style teammate awareness
@@ -93,10 +100,10 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     # Build on IndAgObs base envs + TeamObsWrapper. Each agent receives
     # its local 3x3 image UNCHANGED, plus structured teammate features:
     #   teammate_positions (N,2), teammate_directions (N,), teammate_has_ball (N,)
-    # Only for team-based (2v2) environments.
+    # Only for team-based (2v2+) environments. No 1v1 variants (no teammates).
     # -----------------------------------------------------------------------
     'MosaicMultiGrid-Soccer-TeamObs-v0': (SoccerTeamObsEnv, {}),
-    'MosaicMultiGrid-Collect2vs2-TeamObs-v0': (Collect2vs2TeamObsEnv, {}),
+    'MosaicMultiGrid-Collect-2vs2-TeamObs-v0': (Collect2vs2TeamObsEnv, {}),
 
     # -----------------------------------------------------------------------
     # Basketball environments (v3.0.3) - 3vs3 on basketball court

@@ -210,3 +210,123 @@ class TestBasketballGameplay:
             assert total == 0, f"Rewards not zero-sum: {rewards}"
             if any(terms.values()):
                 break
+
+
+class TestRewardSignCorrectness:
+    """Verify scoring team gets POSITIVE reward (regression test for sign bug).
+
+    Bug: _handle_drop passed fwd_obj.index (goal owner) to _team_reward as
+    scoring_team. Since you score at the OPPOSING team's goal, the goal owner
+    is the team that got scored ON, inverting the reward sign.
+
+    Fix: pass agent.team_index (the team that actually scored).
+    """
+
+    def test_green_team_scores_positive_reward(self):
+        """Green (team 1) scores at Blue's goal -> Green gets +reward."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        # Setup: place green agent 0 facing Blue's goal at (17, 5)
+        agent = env.agents[0]  # team_index = 1 (green)
+        assert agent.team_index == 1, f"Expected green team, got {agent.team_index}"
+
+        # Give the agent a ball
+        ball = Ball(color='red', index=0)
+        agent.state.carrying = ball
+
+        # Move agent to (16, 5) facing right (direction 0) -> front_pos = (17, 5)
+        agent.state.pos = (16, 5)
+        agent.state.dir = 0  # facing right
+
+        # Step: agent 0 drops, all others do nothing
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        _, rewards, _, _, _ = env.step(actions)
+
+        # Green agents (0, 1, 2) should get POSITIVE reward
+        green_total = rewards[0] + rewards[1] + rewards[2]
+        blue_total = rewards[3] + rewards[4] + rewards[5]
+
+        assert green_total > 0, (
+            f"Green (scoring team) should get positive reward, got {green_total}. "
+            f"Rewards: {rewards}"
+        )
+        assert blue_total < 0, (
+            f"Blue (conceding team) should get negative reward, got {blue_total}. "
+            f"Rewards: {rewards}"
+        )
+        env.close()
+
+    def test_blue_team_scores_positive_reward(self):
+        """Blue (team 2) scores at Green's goal -> Blue gets +reward."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        # Setup: place blue agent 3 facing Green's goal at (1, 5)
+        agent = env.agents[3]  # team_index = 2 (blue)
+        assert agent.team_index == 2, f"Expected blue team, got {agent.team_index}"
+
+        # Give the agent a ball
+        ball = Ball(color='red', index=0)
+        agent.state.carrying = ball
+
+        # Move agent to (2, 5) facing left (direction 2) -> front_pos = (1, 5)
+        agent.state.pos = (2, 5)
+        agent.state.dir = 2  # facing left
+
+        # Step: agent 3 drops, all others do nothing
+        actions = {0: Action.done, 1: Action.done, 2: Action.done,
+                   3: Action.drop, 4: Action.done, 5: Action.done}
+        _, rewards, _, _, _ = env.step(actions)
+
+        # Blue agents (3, 4, 5) should get POSITIVE reward
+        green_total = rewards[0] + rewards[1] + rewards[2]
+        blue_total = rewards[3] + rewards[4] + rewards[5]
+
+        assert blue_total > 0, (
+            f"Blue (scoring team) should get positive reward, got {blue_total}. "
+            f"Rewards: {rewards}"
+        )
+        assert green_total < 0, (
+            f"Green (conceding team) should get negative reward, got {green_total}. "
+            f"Rewards: {rewards}"
+        )
+        env.close()
+
+    def test_own_goal_blocked(self):
+        """An agent cannot score at their own team's goal."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        # Setup: green agent 0 with ball facing Green's own goal at (1, 5)
+        agent = env.agents[0]  # team_index = 1 (green)
+        ball = Ball(color='red', index=0)
+        agent.state.carrying = ball
+
+        # Move to (2, 5) facing left -> front_pos = (1, 5) = Green's goal
+        agent.state.pos = (2, 5)
+        agent.state.dir = 2  # facing left
+
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        _, rewards, _, _, _ = env.step(actions)
+
+        # No reward should be given (own-goal blocked)
+        total = sum(rewards.values())
+        assert total == 0, (
+            f"Own-goal should give zero reward, got total={total}. "
+            f"Rewards: {rewards}"
+        )
+        # Ball may be teleport-passed to a teammate (IndAgObs has teleport
+        # passing as fallback), but no scoring reward should have occurred.
+        env.close()

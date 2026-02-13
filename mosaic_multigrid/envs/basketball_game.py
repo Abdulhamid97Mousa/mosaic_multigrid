@@ -197,14 +197,15 @@ class BasketballGameEnv(MultiGridEnv):
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Try scoring on an ObjectGoal
+        # Try scoring on an ObjectGoal (must be opposing team's goal)
         if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
             ball = agent.state.carrying
             if fwd_obj.target_type == ball.type.value:
                 if ball.index in (0, fwd_obj.index):
-                    self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
-                    agent.state.carrying = None
-                    return
+                    if fwd_obj.index != agent.team_index:  # no own-goals
+                        self._team_reward(agent.team_index, rewards, fwd_obj.reward)
+                        agent.state.carrying = None
+                        return
 
         # Try passing to another agent
         target = self._agent_at(fwd_pos)
@@ -339,24 +340,25 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Priority 1: Score at goal
+        # Priority 1: Score at opposing team's goal
         if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
             ball = agent.state.carrying
             if fwd_obj.target_type == ball.type.value:
                 if ball.index in (0, fwd_obj.index):
-                    self._team_reward(fwd_obj.index, rewards, fwd_obj.reward)
-                    agent.state.carrying = None
+                    if fwd_obj.index != agent.team_index:  # no own-goals
+                        self._team_reward(agent.team_index, rewards, fwd_obj.reward)
+                        agent.state.carrying = None
 
-                    # Respawn ball
-                    new_ball = Ball(color=ball.color, index=ball.index)
-                    self.place_obj(new_ball)
+                        # Respawn ball
+                        new_ball = Ball(color=ball.color, index=ball.index)
+                        self.place_obj(new_ball)
 
-                    # Check win condition
-                    self.team_scores[fwd_obj.index] += 1
-                    if self.team_scores[fwd_obj.index] >= self.goals_to_win:
-                        for a in self.agents:
-                            a.state.terminated = True
-                    return
+                        # Check win condition
+                        self.team_scores[agent.team_index] += 1
+                        if self.team_scores[agent.team_index] >= self.goals_to_win:
+                            for a in self.agents:
+                                a.state.terminated = True
+                        return
 
         # Priority 2: Teleport pass to teammate
         teammates = [
