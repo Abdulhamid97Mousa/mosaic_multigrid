@@ -317,6 +317,9 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         self.goals_to_win = goals_to_win
         self.steal_cooldown = steal_cooldown
         self.team_scores: dict[int, int] = {}
+        self.goal_scored_by: list[dict] = []
+        self.passes_completed: list[dict] = []
+        self.steals_completed: list[dict] = []
 
     def get_full_render(self, highlight: bool, tile_size: int):
         """Override to use FIFA-style rendering instead of default grid tiles."""
@@ -330,6 +333,9 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         # Initialize team scores (one entry per unique team index)
         unique_teams = set(agent.team_index for agent in self.agents)
         self.team_scores = {team: 0 for team in unique_teams}
+        self.goal_scored_by = []
+        self.passes_completed = []
+        self.steals_completed = []
 
         # Initialize action cooldowns for all agents
         for agent in self.agents:
@@ -338,13 +344,36 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         return obs, info
 
     def step(self, actions):
-        """Step with cooldown decrements."""
+        """Step with cooldown decrements and event tracking in info."""
         # Decrement action cooldowns before processing actions
         for agent in self.agents:
             if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
                 agent.action_cooldown -= 1
 
-        return super().step(actions)
+        goals_before = len(self.goal_scored_by)
+        passes_before = len(self.passes_completed)
+        steals_before = len(self.steals_completed)
+        obs, rewards, terms, truncs, infos = super().step(actions)
+
+        # Inject goal event into info dict when a goal was scored this step
+        if len(self.goal_scored_by) > goals_before:
+            latest_goal = self.goal_scored_by[-1]
+            for agent_id in infos:
+                infos[agent_id]["goal_scored_by"] = latest_goal
+
+        # Inject pass event into info dict when a pass was completed this step
+        if len(self.passes_completed) > passes_before:
+            latest_pass = self.passes_completed[-1]
+            for agent_id in infos:
+                infos[agent_id]["pass_completed"] = latest_pass
+
+        # Inject steal event into info dict when a steal occurred this step
+        if len(self.steals_completed) > steals_before:
+            latest_steal = self.steals_completed[-1]
+            for agent_id in infos:
+                infos[agent_id]["steal_completed"] = latest_steal
+
+        return obs, rewards, terms, truncs, infos
 
     def _handle_pickup(
         self,
@@ -382,6 +411,14 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                     # Steal successful!
                     agent.state.carrying = target.state.carrying
                     target.state.carrying = None
+
+                    # Track the steal
+                    self.steals_completed.append({
+                        "step": self.step_count,
+                        "stealer": agent.index,
+                        "victim": target.index,
+                        "team": agent.team_index,
+                    })
 
                     # NEW: Apply dual cooldown (both stealer and victim)
                     agent.action_cooldown = self.steal_cooldown
@@ -422,6 +459,13 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                         self._team_reward(agent.team_index, rewards, fwd_obj.reward)
                         agent.state.carrying = None
 
+                        # Track which agent scored
+                        self.goal_scored_by.append({
+                            "step": self.step_count,
+                            "scorer": agent.index,
+                            "team": agent.team_index,
+                        })
+
                         # Respawn ball with same color and team index
                         new_ball = Ball(
                             color=ball.color,
@@ -448,6 +492,14 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             target = teammates[self.np_random.integers(len(teammates))]
             target.state.carrying = agent.state.carrying
             agent.state.carrying = None
+
+            # Track the completed pass
+            self.passes_completed.append({
+                "step": self.step_count,
+                "passer": agent.index,
+                "receiver": target.index,
+                "team": agent.team_index,
+            })
             return
 
         # Priority 3: Drop on empty ground (fallback)
@@ -483,7 +535,7 @@ class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             num_balls=[1],
             agents_index=[1, 1, 2, 2],  # 2v2 teams
             balls_index=[0],  # Wildcard ball
-            zero_sum=True,
+            zero_sum=False,
             **kwargs,
         )
 
@@ -518,6 +570,6 @@ class SoccerGame2HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             num_balls=[1],
             agents_index=[1, 2],  # 1v1 teams (Green vs Red)
             balls_index=[0],  # Wildcard ball
-            zero_sum=True,
+            zero_sum=False,
             **kwargs,
         )

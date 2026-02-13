@@ -443,8 +443,12 @@ Game Setup:
 | **Pickup ball** | 0 | Neutral tactical action (no reward) |
 | **Steal ball** | 0 | Neutral tactical action (no reward) |
 | **Pass ball** | 0 | Neutral tactical action (no reward) |
-| **Score goal** | +1 (team), -1 (opponent) | Zero-sum, ONLY way to win |
+| **Score goal** | +1 (shared to scoring team) | Positive-only, ONLY way to win |
 | **Win (2 goals)** | Episode terminates | Natural termination signal |
+
+**Positive-only rewards (v4.2.0):** IndAgObs Soccer variants now use positive-only shared team rewards, following the SMAC convention (`reward_only_positive=True`). Opponents receive 0 on conceded goals, not -1.
+
+**Event tracking (v4.2.0):** Three event types are tracked as metadata in the info dict: `goal_scored_by` records `{step, scorer, team}`, `passes_completed` records `{step, passer, receiver, team}`, and `steals_completed` records `{step, stealer, victim, team}`. Together these cover the full action chain (steal, pass, goal) for post-hoc credit attribution without affecting the reward signal.
 
 **Why only scoring gives reward?**
 - **Clear objective:** Score 2 goals to win (simple for RL)
@@ -636,6 +640,7 @@ is a training architecture choice.
 
 These improvements transform Soccer from a broken environment into a **research-grade testbed** for:
 - Multi-agent coordination (passing, role specialization)
-- Competitive team play (zero-sum, offense/defense balance)
+- Competitive team play (positive-only rewards, offense/defense balance)
 - Emergent strategic behavior (MAPPO role discovery)
 - Controlled observation ablation studies (Independent vs TeamObs)
+- Credit assignment research (goal_scored_by tracking in info dict)

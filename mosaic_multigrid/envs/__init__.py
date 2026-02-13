@@ -83,16 +83,16 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-Soccer-v0': (SoccerGame4HEnv10x15N2, {}),
     'MosaicMultiGrid-Collect-v0': (CollectGame3HEnv10x10N3, {}),  # 3-agent individual
     'MosaicMultiGrid-Collect-2vs2-v0': (CollectGame4HEnv10x10N2, {}),  # 4-agent teams
-    'MosaicMultiGrid-Collect-1vs1-v0': (CollectGame2HEnv10x10N2, {}),  # 2-agent 1v1 teams
+    'MosaicMultiGrid-Collect-1vs1-v0': (CollectGame2HEnv10x10N2, {}),  # 2-agent 1v1 teams (v4.1.0)
 
     # -----------------------------------------------------------------------
     # IndAgObs environments (v1.1.0) - RECOMMENDED for RL training
     # -----------------------------------------------------------------------
     'MosaicMultiGrid-Soccer-IndAgObs-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
-    'MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0': (SoccerGame2HIndAgObsEnv16x11N2, {}),
+    'MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0': (SoccerGame2HIndAgObsEnv16x11N2, {}),  # v4.1.0
     'MosaicMultiGrid-Collect-IndAgObs-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
     'MosaicMultiGrid-Collect-2vs2-IndAgObs-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
-    'MosaicMultiGrid-Collect-1vs1-IndAgObs-v0': (CollectGame2HIndAgObsEnv10x10N2, {}),
+    'MosaicMultiGrid-Collect-1vs1-IndAgObs-v0': (CollectGame2HIndAgObsEnv10x10N2, {}),  # v4.1.0
 
     # -----------------------------------------------------------------------
     # TeamObs environments (v2.0.0) - SMAC-style teammate awareness

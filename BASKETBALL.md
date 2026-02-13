@@ -106,10 +106,10 @@ An agent scores by:
 3. Dropping the ball at the goal (DROP action, face goal and press action 4)
 
 When a goal is scored:
-- Scoring team receives +1 reward per agent
-- Opposing team receives -1 reward per agent (zero-sum)
+- Scoring team receives +1 reward per agent (positive-only, opponents get 0)
 - Ball respawns at a random empty cell
 - Team scores are tracked (first to `goals_to_win` terminates the episode)
+- `goal_scored_by`, `passes_completed`, and `steals_completed` events are recorded in the info dict for post-hoc credit assignment analysis
 
 ### Teleport Passing
 
@@ -225,10 +225,10 @@ This works because Basketball (like Soccer and Collect) has NO doors, so door st
 | Pickup ball from ground | 0 | Neutral |
 | Steal ball from opponent | 0 | Neutral |
 | Pass ball to teammate | 0 | Neutral |
-| Score goal | +1 (team), -1 (opponent) | Zero-sum |
+| Score goal | +1 (shared to scoring team) | Positive-only, opponents get 0 |
 | Episode termination | -- | Natural signal when team wins |
 
-Only scoring gives reward. This creates a clear optimization objective for RL agents.
+Only scoring gives reward. This creates a clear optimization objective for RL agents. Basketball uses positive-only shared team rewards (v4.2.0), matching Soccer IndAgObs and the SMAC convention.
 
 ---
 

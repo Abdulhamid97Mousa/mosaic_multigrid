@@ -90,7 +90,7 @@ Showing how we combined the best of both packages:
 
 Team-based competitive environment with **FIFA-style field rendering**. Agents score by dropping the ball at the opposing team's goal. Features **teleport passing**, stealing with dual cooldown, ball respawn, and first-to-2-goals termination.
 
-**Recommended variant:** `SoccerGame4HIndAgObsEnv16x11N2` — 4 agents (2v2), 16x11 grid (FIFA ratio), 1 ball, zero-sum.
+**Recommended variant:** `SoccerGame4HIndAgObsEnv16x11N2` -- 4 agents (2v2), 16x11 grid (FIFA ratio), 1 ball, positive-only shared team reward, `goal_scored_by` tracking in info dict.
 
 ### CollectGame (Individual Competition)
 
@@ -117,7 +117,7 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 
 1v1 variant of the Soccer environment on the same 16x11 FIFA-style grid. Two agents (one per team) compete head-to-head. Teleport passing is a no-op (no teammates), making this a purely individual duel of ball control, stealing, and scoring. First to 2 goals wins.
 
-**IndAgObs variant:** `SoccerGame2HIndAgObsEnv16x11N2` -- 2 agents (1v1), 16x11 grid, 1 ball, zero-sum, max_steps=200.
+**IndAgObs variant:** `SoccerGame2HIndAgObsEnv16x11N2` -- 2 agents (1v1), 16x11 grid, 1 ball, positive-only rewards, max_steps=200.
 
 ### Collect 1vs1 (Team-Based Collection)
 
@@ -134,7 +134,7 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 
 Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents score by dropping the ball at the opposing team's basket (goal on the baseline). Features **teleport passing**, stealing with dual cooldown, ball respawn, first-to-2-goals termination, and **basketball-court rendering** with three-point arcs, paint rectangles, and center circle.
 
-**IndAgObs variant:** `BasketballGame6HIndAgObsEnv19x11N3` — 6 agents (3vs3), 19x11 grid, 1 ball, zero-sum.
+**IndAgObs variant:** `BasketballGame6HIndAgObsEnv19x11N3` — 6 agents (3vs3), 19x11 grid, 1 ball, positive-only rewards, event tracking.
 **TeamObs variant:** `Basketball3vs3TeamObsEnv` — IndAgObs + SMAC-style teammate awareness (2 teammates per agent).
 
 ---
@@ -154,9 +154,9 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 | **MosaicMultiGrid-Soccer-IndAgObs-v0** | New (v4.0.0) | Ball respawns after goals, first-to-2-goals termination, dual cooldown on stealing, 16x11 FIFA aspect ratio |
 | **MosaicMultiGrid-Collect-IndAgObs-v0** | New (v4.0.0) | Natural termination when all balls collected, 35x faster training (300 vs 10,000 steps) |
 | **MosaicMultiGrid-Collect-2vs2-IndAgObs-v0** | New (v4.0.0) | Natural termination, 7 balls (odd number prevents draws), team coordination |
-| **MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0** | New | 1v1 soccer, same FIFA grid, pure individual play |
-| **MosaicMultiGrid-Collect-1vs1-IndAgObs-v0** | New | 1v1 collection, 3 balls (no draws), natural termination |
-| **MosaicMultiGrid-Collect-1vs1-v0** | New | 1v1 base collection (deprecated, use IndAgObs) |
+| **MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0** | New (v4.1.0) | 1v1 soccer, same FIFA grid, pure individual play |
+| **MosaicMultiGrid-Collect-1vs1-IndAgObs-v0** | New (v4.1.0) | 1v1 collection, 3 balls (no draws), natural termination |
+| **MosaicMultiGrid-Collect-1vs1-v0** | New (v4.1.0) | 1v1 base collection (deprecated, use IndAgObs) |
 | MosaicMultiGrid-Soccer-v0 | Deprecated | Ball disappears after scoring, no termination, runs 10,000 steps always |
 | MosaicMultiGrid-Collect-v0 | Deprecated | No termination signal after all balls collected, wastes computation |
 | MosaicMultiGrid-Collect-2vs2-v0 | Deprecated | No termination signal after all balls collected |
@@ -392,12 +392,13 @@ Understanding when and how episodes end is crucial for training RL agents. Follo
 | **Terminated** |When any team scores 2 goals (first-to-win) |
 | **Truncated** |When `max_steps >= 200` (configurable) |
 | **Winning Condition** | First team to score `goals_to_win` (default: 2) wins |
-| **Scoring Mechanism** | Drop ball at opponent's ObjectGoal: +1 to scoring team, -1 to other team (zero-sum) |
+| **Scoring Mechanism** | Drop ball at opponent's ObjectGoal: +1 shared to scoring team (positive-only, no penalty to opponents) |
+| **Event Tracking** | `goal_scored_by`, `passes_completed`, `steals_completed` in info dict for credit assignment |
 | **Ball Respawn** |Ball respawns at random location after each goal |
 | **Episode Length** | Variable (terminates when team wins, or truncates at 200 steps) |
 | **Cooldown** |10-step dual cooldown on stealing (both stealer and victim) |
 
-**Design rationale**: Enhanced Soccer provides **natural termination** when a team wins, significantly reducing training time (~50× faster). Ball respawns after each goal to keep gameplay continuous.
+**Design rationale**: Enhanced Soccer provides **natural termination** when a team wins, significantly reducing training time (~50x faster). Ball respawns after each goal to keep gameplay continuous. Rewards are positive-only (following SMAC convention), with `goal_scored_by` and `passes_completed` metadata for credit assignment and assist chain analysis.
 
 ```python
 env = gym.make('MosaicMultiGrid-Soccer-Enhanced-v0')
@@ -530,7 +531,7 @@ for step in range(400):
 | **Terminated** | When any agent scores 2 goals (first-to-win) |
 | **Truncated** | When `max_steps >= 200` (configurable) |
 | **Winning Condition** | First agent to score `goals_to_win` (default: 2) wins |
-| **Scoring Mechanism** | Drop ball at opponent's goal: +1 to scorer, -1 to opponent (zero-sum) |
+| **Scoring Mechanism** | Drop ball at opponent's goal: +1 to scorer (positive-only, no penalty to opponent) |
 | **Ball Respawn** | Ball respawns at random location after each goal |
 | **Episode Length** | Variable (terminates when agent wins, or truncates at 200 steps) |
 | **Passing** | Teleport pass is a no-op (no teammates) -- drop always places ball on ground |

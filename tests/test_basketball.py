@@ -200,54 +200,46 @@ class TestBasketballGameplay:
         # At step 200, should be truncated (if no team scored 2 goals)
         assert any(truncs.values())
 
-    def test_zero_sum_rewards(self, env_ind):
-        """Any non-zero reward step should sum to zero across all agents."""
+    def test_positive_only_rewards(self, env_ind):
+        """Rewards should be positive-only (no negative rewards for opponents)."""
         env_ind.reset(seed=SEED)
         for _ in range(200):
             action = {i: env_ind.action_space[i].sample() for i in range(6)}
             _, rewards, terms, _, _ = env_ind.step(action)
-            total = sum(rewards.values())
-            assert total == 0, f"Rewards not zero-sum: {rewards}"
+            for r in rewards.values():
+                assert r >= 0, f"Negative reward found: {rewards}"
             if any(terms.values()):
                 break
 
 
 class TestRewardSignCorrectness:
-    """Verify scoring team gets POSITIVE reward (regression test for sign bug).
+    """Verify scoring team gets POSITIVE reward and opponents get zero.
 
-    Bug: _handle_drop passed fwd_obj.index (goal owner) to _team_reward as
-    scoring_team. Since you score at the OPPOSING team's goal, the goal owner
-    is the team that got scored ON, inverting the reward sign.
-
-    Fix: pass agent.team_index (the team that actually scored).
+    Basketball IndAgObs uses positive-only rewards (zero_sum=False).
+    Scoring team gets +1 shared, opponents get 0.
     """
 
     def test_green_team_scores_positive_reward(self):
-        """Green (team 1) scores at Blue's goal -> Green gets +reward."""
+        """Green (team 1) scores at Blue's goal -> Green gets +reward, Blue gets 0."""
         from mosaic_multigrid.core.actions import Action
         from mosaic_multigrid.core.world_object import Ball
 
         env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        assert env.zero_sum is False
         env.reset(seed=SEED)
 
-        # Setup: place green agent 0 facing Blue's goal at (17, 5)
         agent = env.agents[0]  # team_index = 1 (green)
-        assert agent.team_index == 1, f"Expected green team, got {agent.team_index}"
+        assert agent.team_index == 1
 
-        # Give the agent a ball
         ball = Ball(color='red', index=0)
         agent.state.carrying = ball
-
-        # Move agent to (16, 5) facing right (direction 0) -> front_pos = (17, 5)
         agent.state.pos = (16, 5)
-        agent.state.dir = 0  # facing right
+        agent.state.dir = 0  # facing right -> front_pos = (17, 5)
 
-        # Step: agent 0 drops, all others do nothing
         actions = {0: Action.drop, 1: Action.done, 2: Action.done,
                    3: Action.done, 4: Action.done, 5: Action.done}
         _, rewards, _, _, _ = env.step(actions)
 
-        # Green agents (0, 1, 2) should get POSITIVE reward
         green_total = rewards[0] + rewards[1] + rewards[2]
         blue_total = rewards[3] + rewards[4] + rewards[5]
 
@@ -255,38 +247,32 @@ class TestRewardSignCorrectness:
             f"Green (scoring team) should get positive reward, got {green_total}. "
             f"Rewards: {rewards}"
         )
-        assert blue_total < 0, (
-            f"Blue (conceding team) should get negative reward, got {blue_total}. "
+        assert blue_total == 0, (
+            f"Blue (conceding team) should get 0 reward, got {blue_total}. "
             f"Rewards: {rewards}"
         )
         env.close()
 
     def test_blue_team_scores_positive_reward(self):
-        """Blue (team 2) scores at Green's goal -> Blue gets +reward."""
+        """Blue (team 2) scores at Green's goal -> Blue gets +reward, Green gets 0."""
         from mosaic_multigrid.core.actions import Action
         from mosaic_multigrid.core.world_object import Ball
 
         env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
         env.reset(seed=SEED)
 
-        # Setup: place blue agent 3 facing Green's goal at (1, 5)
         agent = env.agents[3]  # team_index = 2 (blue)
-        assert agent.team_index == 2, f"Expected blue team, got {agent.team_index}"
+        assert agent.team_index == 2
 
-        # Give the agent a ball
         ball = Ball(color='red', index=0)
         agent.state.carrying = ball
-
-        # Move agent to (2, 5) facing left (direction 2) -> front_pos = (1, 5)
         agent.state.pos = (2, 5)
-        agent.state.dir = 2  # facing left
+        agent.state.dir = 2  # facing left -> front_pos = (1, 5)
 
-        # Step: agent 3 drops, all others do nothing
         actions = {0: Action.done, 1: Action.done, 2: Action.done,
                    3: Action.drop, 4: Action.done, 5: Action.done}
         _, rewards, _, _, _ = env.step(actions)
 
-        # Blue agents (3, 4, 5) should get POSITIVE reward
         green_total = rewards[0] + rewards[1] + rewards[2]
         blue_total = rewards[3] + rewards[4] + rewards[5]
 
@@ -294,8 +280,8 @@ class TestRewardSignCorrectness:
             f"Blue (scoring team) should get positive reward, got {blue_total}. "
             f"Rewards: {rewards}"
         )
-        assert green_total < 0, (
-            f"Green (conceding team) should get negative reward, got {green_total}. "
+        assert green_total == 0, (
+            f"Green (conceding team) should get 0 reward, got {green_total}. "
             f"Rewards: {rewards}"
         )
         env.close()
@@ -308,25 +294,230 @@ class TestRewardSignCorrectness:
         env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
         env.reset(seed=SEED)
 
-        # Setup: green agent 0 with ball facing Green's own goal at (1, 5)
         agent = env.agents[0]  # team_index = 1 (green)
         ball = Ball(color='red', index=0)
         agent.state.carrying = ball
-
-        # Move to (2, 5) facing left -> front_pos = (1, 5) = Green's goal
         agent.state.pos = (2, 5)
-        agent.state.dir = 2  # facing left
+        agent.state.dir = 2  # facing left -> front_pos = (1, 5) = Green's goal
 
         actions = {0: Action.drop, 1: Action.done, 2: Action.done,
                    3: Action.done, 4: Action.done, 5: Action.done}
         _, rewards, _, _, _ = env.step(actions)
 
-        # No reward should be given (own-goal blocked)
         total = sum(rewards.values())
         assert total == 0, (
             f"Own-goal should give zero reward, got total={total}. "
             f"Rewards: {rewards}"
         )
-        # Ball may be teleport-passed to a teammate (IndAgObs has teleport
-        # passing as fallback), but no scoring reward should have occurred.
+        env.close()
+
+
+class TestBasketballEventTracking:
+    """goal_scored_by and passes_completed tracking in Basketball IndAgObs."""
+
+    def test_goal_scored_by_empty_on_reset(self):
+        """goal_scored_by should be empty after reset."""
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        assert env.goal_scored_by == []
+        env.close()
+
+    def test_passes_empty_on_reset(self):
+        """passes_completed should be empty after reset."""
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        assert env.passes_completed == []
+        env.close()
+
+    def test_goal_tracking_records_scorer(self):
+        """After a goal, goal_scored_by should contain the scorer's info."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        agent = env.agents[0]  # team 1
+        ball = Ball(color='red', index=0)
+        agent.state.carrying = ball
+        agent.state.pos = (16, 5)
+        agent.state.dir = 0
+
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        env.step(actions)
+
+        assert len(env.goal_scored_by) == 1
+        goal = env.goal_scored_by[0]
+        assert goal["scorer"] == 0
+        assert goal["team"] == 1
+        assert "step" in goal
+        env.close()
+
+    def test_goal_in_info_dict(self):
+        """Info dict should contain goal_scored_by on scoring steps."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        agent = env.agents[0]
+        ball = Ball(color='red', index=0)
+        agent.state.carrying = ball
+        agent.state.pos = (16, 5)
+        agent.state.dir = 0
+
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        _, _, _, _, infos = env.step(actions)
+
+        for agent_id in infos:
+            assert "goal_scored_by" in infos[agent_id]
+            assert infos[agent_id]["goal_scored_by"]["scorer"] == 0
+        env.close()
+
+    def test_pass_tracking_records_passer(self):
+        """Teleport pass should record passer, receiver, and team."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        # Agent 0 (team 1) carries ball, drop in middle of field
+        agent0 = env.agents[0]
+        ball = Ball(color='red', index=0)
+        agent0.state.carrying = ball
+        agent0.state.pos = (9, 5)
+        agent0.state.dir = 0
+
+        # Clear teammates so only one is eligible
+        env.agents[1].state.carrying = None
+        env.agents[2].state.carrying = None
+        env.grid.set(*agent0.front_pos, None)
+
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        env.step(actions)
+
+        assert len(env.passes_completed) == 1
+        p = env.passes_completed[0]
+        assert p["passer"] == 0
+        assert p["team"] == 1
+        assert p["receiver"] in (1, 2)  # one of the teammates
+        assert "step" in p
+        env.close()
+
+    def test_pass_in_info_dict(self):
+        """Info dict should contain pass_completed on passing steps."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        agent0 = env.agents[0]
+        ball = Ball(color='red', index=0)
+        agent0.state.carrying = ball
+        agent0.state.pos = (9, 5)
+        agent0.state.dir = 0
+        env.agents[1].state.carrying = None
+        env.agents[2].state.carrying = None
+        env.grid.set(*agent0.front_pos, None)
+
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        _, _, _, _, infos = env.step(actions)
+
+        for agent_id in infos:
+            assert "pass_completed" in infos[agent_id]
+            assert infos[agent_id]["pass_completed"]["passer"] == 0
+        env.close()
+
+    def test_tracking_resets_on_new_episode(self):
+        """Both tracking lists should clear on reset."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        # Score a goal to populate goal_scored_by
+        agent = env.agents[0]
+        ball = Ball(color='red', index=0)
+        agent.state.carrying = ball
+        agent.state.pos = (16, 5)
+        agent.state.dir = 0
+
+        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        env.step(actions)
+        assert len(env.goal_scored_by) >= 1
+
+        env.reset(seed=SEED + 1)
+        assert env.goal_scored_by == []
+        assert env.passes_completed == []
+        assert env.steals_completed == []
+        env.close()
+
+    def test_steal_tracking_records_stealer(self):
+        """Stealing from opponent should record stealer, victim, and team."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        # Agent 3 (team 2) carries ball
+        agent3 = env.agents[3]
+        ball = Ball(color='red', index=0)
+        agent3.state.carrying = ball
+        agent3.state.pos = (9, 5)
+
+        # Agent 0 (team 1) faces agent 3 and steals
+        agent0 = env.agents[0]
+        agent0.state.carrying = None
+        agent0.state.pos = (8, 5)
+        agent0.state.dir = 0  # facing right -> front_pos = (9, 5)
+        agent0.action_cooldown = 0
+
+        actions = {0: Action.pickup, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        env.step(actions)
+
+        assert len(env.steals_completed) == 1
+        s = env.steals_completed[0]
+        assert s["stealer"] == 0
+        assert s["victim"] == 3
+        assert s["team"] == 1
+        assert "step" in s
+        env.close()
+
+    def test_steal_in_info_dict(self):
+        """Info dict should contain steal_completed on stealing steps."""
+        from mosaic_multigrid.core.actions import Action
+        from mosaic_multigrid.core.world_object import Ball
+
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+
+        agent3 = env.agents[3]
+        ball = Ball(color='red', index=0)
+        agent3.state.carrying = ball
+        agent3.state.pos = (9, 5)
+
+        agent0 = env.agents[0]
+        agent0.state.carrying = None
+        agent0.state.pos = (8, 5)
+        agent0.state.dir = 0
+        agent0.action_cooldown = 0
+
+        actions = {0: Action.pickup, 1: Action.done, 2: Action.done,
+                   3: Action.done, 4: Action.done, 5: Action.done}
+        _, _, _, _, infos = env.step(actions)
+
+        for agent_id in infos:
+            assert "steal_completed" in infos[agent_id]
+            assert infos[agent_id]["steal_completed"]["stealer"] == 0
         env.close()
