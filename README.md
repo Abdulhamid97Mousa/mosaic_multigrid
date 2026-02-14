@@ -85,7 +85,7 @@ Showing how we combined the best of both packages:
 ### SoccerGame (IndAgObs -- Recommended)
 
 <p align="center">
-  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Gym-MosaicMultiGrid-Soccer-IndAgObs-v0.png" width="480">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Gym-MosaicMultiGrid-Soccer-2vs2-IndAgObs-v0.png" width="480">
 </p>
 
 Team-based competitive environment with **FIFA-style field rendering**. Agents score by dropping the ball at the opposing team's goal. Features **teleport passing**, stealing with dual cooldown, ball respawn, and first-to-2-goals termination.
@@ -149,9 +149,9 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 |------------|--------|-----------------|
 | **MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0** | New (v4.0.0) | 3vs3 basketball, 19x11 court, teleport passing, basketball-court rendering |
 | **MosaicMultiGrid-Basketball-3vs3-TeamObs-v0** | New (v4.0.0) | Basketball 3vs3 + SMAC-style teammate awareness (2 teammates per agent) |
-| **MosaicMultiGrid-Soccer-TeamObs-v0** | New (v4.0.0) | Soccer IndAgObs + SMAC-style teammate awareness (positions, directions, has_ball) |
+| **MosaicMultiGrid-Soccer-2vs2-TeamObs-v0** | New (v4.0.0) | Soccer IndAgObs + SMAC-style teammate awareness (positions, directions, has_ball) |
 | **MosaicMultiGrid-Collect-2vs2-TeamObs-v0** | New (v4.0.0) | Collect 2v2 IndAgObs + SMAC-style teammate awareness |
-| **MosaicMultiGrid-Soccer-IndAgObs-v0** | New (v4.0.0) | Ball respawns after goals, first-to-2-goals termination, dual cooldown on stealing, 16x11 FIFA aspect ratio |
+| **MosaicMultiGrid-Soccer-2vs2-IndAgObs-v0** | New (v4.0.0) | Ball respawns after goals, first-to-2-goals termination, dual cooldown on stealing, 16x11 FIFA aspect ratio |
 | **MosaicMultiGrid-Collect-IndAgObs-v0** | New (v4.0.0) | Natural termination when all balls collected, 35x faster training (300 vs 10,000 steps) |
 | **MosaicMultiGrid-Collect-2vs2-IndAgObs-v0** | New (v4.0.0) | Natural termination, 7 balls (odd number prevents draws), team coordination |
 | **MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0** | New (v4.1.0) | 1v1 soccer, same FIFA grid, pure individual play |

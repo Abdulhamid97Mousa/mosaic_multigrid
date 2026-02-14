@@ -231,7 +231,7 @@ agents happen to occupy adjacent cells.
 
 ## 4. TeamObs: Team Observations
 
-**Environment:** `MosaicMultiGrid-Soccer-TeamObs-v0`
+**Environment:** `MosaicMultiGrid-Soccer-2vs2-TeamObs-v0`
 
 Each agent receives the **full IndObs observation unchanged**, plus 3 additional keys
 about teammates:
@@ -658,7 +658,7 @@ MOSAIC multigrid provides paired variants for direct comparison:
 | Environment ID | Observation Model | Use Case |
 |---|---|---|
 | `MosaicMultiGrid-Soccer-Enhanced-v0` | IndObs | Baseline (individual play) |
-| `MosaicMultiGrid-Soccer-TeamObs-v0` | TeamObs | Team coordination research |
+| `MosaicMultiGrid-Soccer-2vs2-TeamObs-v0` | TeamObs | Team coordination research |
 
 ### Collect Environments
 
@@ -682,7 +682,7 @@ obs, _ = env_ind.reset(seed=42)
 print(obs[0].keys())   # dict_keys(['image', 'direction', 'mission'])
 
 # TeamObs -- with teammate awareness
-env_team = gym.make('MosaicMultiGrid-Soccer-TeamObs-v0', render_mode='rgb_array')
+env_team = gym.make('MosaicMultiGrid-Soccer-2vs2-TeamObs-v0', render_mode='rgb_array')
 obs, _ = env_team.reset(seed=42)
 print(obs[0].keys())   # dict_keys(['image', 'direction', 'mission',
                         #            'teammate_positions', 'teammate_directions',

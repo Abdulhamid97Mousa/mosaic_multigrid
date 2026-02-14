@@ -209,7 +209,7 @@ class TestRegisteredTeamObsEnvs:
     """Test TeamObs environments via gymnasium.make()."""
 
     @pytest.mark.parametrize("env_id,n_agents", [
-        ("MosaicMultiGrid-Soccer-TeamObs-v0", 4),
+        ("MosaicMultiGrid-Soccer-2vs2-TeamObs-v0", 4),
         ("MosaicMultiGrid-Collect-2vs2-TeamObs-v0", 4),
     ])
     def test_gym_make(self, env_id, n_agents):
@@ -231,7 +231,7 @@ class TestRegisteredTeamObsEnvs:
 
     def test_soccer_teamobs_render(self):
         """Soccer TeamObs should render RGB frames."""
-        env = gym.make("MosaicMultiGrid-Soccer-TeamObs-v0", render_mode="rgb_array")
+        env = gym.make("MosaicMultiGrid-Soccer-2vs2-TeamObs-v0", render_mode="rgb_array")
         env.reset(seed=42)
         frame = env.render()
         assert isinstance(frame, np.ndarray)

@@ -88,7 +88,7 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     # -----------------------------------------------------------------------
     # IndAgObs environments (v1.1.0) - RECOMMENDED for RL training
     # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-IndAgObs-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
+    'MosaicMultiGrid-Soccer-2vs2-IndAgObs-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
     'MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0': (SoccerGame2HIndAgObsEnv16x11N2, {}),  # v4.1.0
     'MosaicMultiGrid-Collect-IndAgObs-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
     'MosaicMultiGrid-Collect-2vs2-IndAgObs-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
@@ -102,7 +102,7 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     #   teammate_positions (N,2), teammate_directions (N,), teammate_has_ball (N,)
     # Only for team-based (2v2+) environments. No 1v1 variants (no teammates).
     # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-TeamObs-v0': (SoccerTeamObsEnv, {}),
+    'MosaicMultiGrid-Soccer-2vs2-TeamObs-v0': (SoccerTeamObsEnv, {}),
     'MosaicMultiGrid-Collect-2vs2-TeamObs-v0': (Collect2vs2TeamObsEnv, {}),
 
     # -----------------------------------------------------------------------

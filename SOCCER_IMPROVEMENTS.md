@@ -546,14 +546,14 @@ Passing is blind (teleport to random eligible teammate).
 
 ---
 
-### **MosaicMultiGrid-Soccer-TeamObs-v0** (Recommended for team coordination)
+### **MosaicMultiGrid-Soccer-2vs2-TeamObs-v0** (Recommended for team coordination)
 
 **Status:** [RECOMMENDED] For RL training requiring team coordination
 
 ```python
 # TeamObs variant -- SMAC-style teammate awareness
 env = gym.make(
-    'MosaicMultiGrid-Soccer-TeamObs-v0',
+    'MosaicMultiGrid-Soccer-2vs2-TeamObs-v0',
     render_mode='rgb_array',
 )
 obs, _ = env.reset()
@@ -607,7 +607,7 @@ is a training architecture choice.
 
 ### **Environment Comparison**
 
-| Aspect | `Soccer-v0` | `Soccer-Enhanced-v0` | `Soccer-TeamObs-v0` |
+| Aspect | `Soccer-v0` | `Soccer-Enhanced-v0` | `Soccer-2vs2-TeamObs-v0` |
 |--------|-------------|---------------------|---------------------|
 | **Status** | Deprecated | Recommended | Recommended |
 | **Ball respawn** | No | Yes | Yes |
