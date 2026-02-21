@@ -311,6 +311,13 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
         steals_before = len(self.steals_completed)
         obs, rewards, terms, truncs, infos = super().step(actions)
 
+        # Inject per-agent position and carrying status for telemetry.
+        # This runs first to populate the defaultdict keys so that the
+        # event injection loops below can iterate over all agent IDs.
+        for agent in self.agents:
+            infos[agent.index]["position"] = tuple(int(c) for c in agent.state.pos)
+            infos[agent.index]["carrying"] = agent.state.carrying is not None
+
         # Inject goal event into info dict when a goal was scored this step
         if len(self.goal_scored_by) > goals_before:
             latest_goal = self.goal_scored_by[-1]

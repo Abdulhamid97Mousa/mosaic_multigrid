@@ -1,14 +1,17 @@
-"""Tests for PettingZoo AEC (Agent Environment Cycle) API integration.
+"""Tests for PettingZoo AEC (Agent-Environment Cycle) API integration.
 
 Validates that mosaic_multigrid environments work correctly with
 the PettingZoo AEC API (sequential turn-based stepping).
 
 In AEC mode, agents take turns acting one at a time via agent_iter().
-The environment processes each action individually, and agents receive
-updated observations before their next turn.
+Only the current agent submits a real action; all others wait via
+Action.noop (index 0), which was added specifically for this purpose.
+Without noop, non-acting agents would silently execute Action.left
+(the previous index 0), corrupting the episode.
 
 Internally, this uses PettingZoo's parallel_to_aec converter to wrap
-the native ParallelEnv.
+the native ParallelEnv.  The converter buffers actions and calls
+env.step() once per full round after all agents have acted.
 """
 from __future__ import annotations
 

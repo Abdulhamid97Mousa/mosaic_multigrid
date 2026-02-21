@@ -420,8 +420,12 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
             if agent.state.terminated:
                 continue
 
+            # No operation — AEC mode: non-acting agent waits without moving
+            if action == Action.noop:
+                pass
+
             # Rotate left
-            if action == Action.left:
+            elif action == Action.left:
                 agent.state.dir = (agent.state.dir - 1) % 4
 
             # Rotate right

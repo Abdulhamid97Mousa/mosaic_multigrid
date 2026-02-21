@@ -521,3 +521,109 @@ class TestBasketballEventTracking:
             assert "steal_completed" in infos[agent_id]
             assert infos[agent_id]["steal_completed"]["stealer"] == 0
         env.close()
+
+
+# ---------------------------------------------------------------
+# Step telemetry tests (position + carrying in infos)
+# ---------------------------------------------------------------
+
+class TestBasketballStepTelemetry:
+    """Verify 'position' and 'carrying' keys appear in infos after every step.
+
+    These keys are injected by BasketballGameIndAgObsEnv.step() to support
+    post-hoc credit assignment and trajectory analysis.
+    """
+
+    def test_position_present_in_infos(self):
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        for agent_id in range(6):
+            assert "position" in infos[agent_id], (
+                f"'position' missing from infos[{agent_id}]"
+            )
+        env.close()
+
+    def test_carrying_present_in_infos(self):
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        for agent_id in range(6):
+            assert "carrying" in infos[agent_id], (
+                f"'carrying' missing from infos[{agent_id}]"
+            )
+        env.close()
+
+    def test_position_is_tuple_of_two_ints(self):
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        for agent_id in range(6):
+            pos = infos[agent_id]["position"]
+            assert isinstance(pos, tuple), f"position is {type(pos)}, expected tuple"
+            assert len(pos) == 2
+            assert all(isinstance(c, int) for c in pos)
+        env.close()
+
+    def test_carrying_is_bool(self):
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        for agent_id in range(6):
+            assert isinstance(infos[agent_id]["carrying"], bool)
+        env.close()
+
+    def test_position_matches_agent_state(self):
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        for agent in env.agents:
+            expected = tuple(int(c) for c in agent.state.pos)
+            assert infos[agent.index]["position"] == expected, (
+                f"infos position {infos[agent.index]['position']} != "
+                f"agent state {expected}"
+            )
+        env.close()
+
+    def test_carrying_false_when_not_carrying(self):
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        for agent in env.agents:
+            agent.state.carrying = None
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        for agent_id in range(6):
+            assert infos[agent_id]["carrying"] is False
+        env.close()
+
+    def test_carrying_true_when_agent_holds_ball(self):
+        from mosaic_multigrid.core import Action
+        from mosaic_multigrid.core.world_object import Ball
+        from mosaic_multigrid.core.constants import Color
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        env.agents[0].state.carrying = Ball(color=Color.red, index=0)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+        assert infos[0]["carrying"] is True
+        env.close()
+
+    def test_telemetry_present_on_every_step(self):
+        """Telemetry must appear on every step, not just scoring steps."""
+        from mosaic_multigrid.core import Action
+        env = BasketballGame6HIndAgObsEnv19x11N3(render_mode=None)
+        env.reset(seed=SEED)
+        for step_num in range(10):
+            _, _, _, _, infos = env.step({i: Action.noop for i in range(6)})
+            for agent_id in range(6):
+                assert "position" in infos[agent_id], (
+                    f"step {step_num}: 'position' missing for agent {agent_id}"
+                )
+                assert "carrying" in infos[agent_id], (
+                    f"step {step_num}: 'carrying' missing for agent {agent_id}"
+                )
+        env.close()

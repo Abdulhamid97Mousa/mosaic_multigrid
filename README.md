@@ -44,7 +44,7 @@ Showing how we combined the best of both packages:
 | Aspect | gym-multigrid (Fickinger 2020) | INI multigrid (Oguntola 2023) | **mosaic_multigrid (This Fork)** |
 |--------|-------------------------------|-------------------------------|----------------------------------|
 | **API** | Old Gym 4-tuple, list-based | Gymnasium 5-tuple, dict-keyed |  **Gymnasium 5-tuple, dict-keyed** (from INI) |
-| **Actions** | 8 (still=0..done=7) | 7 (left=0..done=6) |  **7 actions, no "still"** (from INI) |
+| **Actions** | 8 (still=0..done=7) | 7 (left=0..done=6) |  **8 actions, noop=0..done=7** (noop restored for AEC compatibility) |
 | **Observations** | `(3, 3, 6)` dict (Soccer) | `(7, 7, 3)` dict (default) |  **`(3, 3, 3)` dict** (Soccer) |
 | **Encoding** | 6 channels | 3 channels [type, color, state] |  **3 channels** (from INI) |
 | **view_size** | **3** (Soccer/Collect) | **7** (default) |  **3 (KEPT from gym-multigrid)** for competitive challenge |
@@ -129,7 +129,7 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 ### BasketballGame (3vs3 -- New in v4.0.0)
 
 <p align="center">
-  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="480">
+  <img src="figures/basketball_3vs3_gameplay.gif" width="480">
 </p>
 
 Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents score by dropping the ball at the opposing team's basket (goal on the baseline). Features **teleport passing**, stealing with dual cooldown, ball respawn, first-to-2-goals termination, and **basketball-court rendering** with three-point arcs, paint rectangles, and center circle.
@@ -719,7 +719,7 @@ mosaic_multigrid/
 ├── base.py                  # MultiGridEnv (Gymnasium-compliant base)
 ├── core/
 │   ├── constants.py         # Type, Color, State, Direction enums
-│   ├── actions.py           # Action enum (7 actions, no "still")
+│   ├── actions.py           # Action enum (8 actions: noop=0..done=7)
 │   ├── world_object.py      # WorldObj numpy-subclass + all object types
 │   ├── agent.py             # Agent + AgentState (vectorized, team_index)
 │   ├── grid.py              # Grid (numpy state + world_objects cache)
@@ -755,21 +755,37 @@ mosaic_multigrid/
 
 ### Action Enum Comparison
 
-| Action | Upstream (Fickinger 2020) | mosaic_multigrid (this fork) | multigrid-ini (Oguntola 2023) |
-|--------|---:|---:|---:|
-| still | **0** | -- | -- |
-| left | 1 | **0** | **0** |
-| right | 2 | **1** | **1** |
-| forward | 3 | **2** | **2** |
-| pickup | 4 | **3** | **3** |
-| drop | 5 | **4** | **4** |
-| toggle | 6 | **5** | **5** |
-| done | 7 | **6** | **6** |
-| **Total** | **8** | **7** | **7** |
+| Action | Upstream (Fickinger 2020) | mosaic_multigrid v1 | **mosaic_multigrid v2 (this fork)** | multigrid-ini (Oguntola 2023) |
+|--------|---:|---:|---:|---:|
+| noop   | -- (was `still`) | -- | **0** | -- |
+| still  | **0** | -- | -- | -- |
+| left   | 1 | **0** | **1** | **0** |
+| right  | 2 | **1** | **2** | **1** |
+| forward| 3 | **2** | **3** | **2** |
+| pickup | 4 | **3** | **4** | **3** |
+| drop   | 5 | **4** | **5** | **4** |
+| toggle | 6 | **5** | **6** | **5** |
+| done   | 7 | **6** | **7** | **6** |
+| **Total** | **8** | **7** | **8** | **7** |
 
-The `still` action (do nothing) was removed. Agents that need to skip a turn send `Action.done` instead. This aligns with multigrid-ini and shrinks the action space from 8 to 7.
+**Why `noop` was added (AEC + Parallel API compatibility):**
 
-> **Migration note:** All action indices shifted down by 1 compared to the upstream code. Any pre-trained policy or hardcoded action mapping from the old environment will need updating.
+In AEC (Agent-Environment Cycle) mode, only one agent acts per physics step.
+All other agents must still submit a *valid* action so the environment can advance,
+but they must not change state. Without a dedicated no-op:
+
+- The previous action 0 was `left` (turn left).
+- Non-acting agents would silently rotate on every step — corrupting the episode
+  and invalidating any comparison between AEC and Parallel results.
+
+`noop=0` is the fix. This design is directly inspired by **MeltingPot** (Google DeepMind),
+which uses `NOOP=0` for the same reason. The `done` action (index 7) signals intentional
+task completion and is semantically different — both cause no physical movement, but only
+`noop` should be used by non-acting agents in AEC mode.
+
+> **Migration note (v1 → v2):** All action indices shifted **up by 1**.
+> Any pre-trained policy or hardcoded action index from v1 will need updating:
+> `left=0→1  right=1→2  forward=2→3  pickup=3→4  drop=4→5  toggle=5→6  done=6→7`
 
 ## Observation Space
 

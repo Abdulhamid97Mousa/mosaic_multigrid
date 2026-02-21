@@ -11,6 +11,7 @@ import gymnasium as gym
 from mosaic_multigrid.envs import (
     SoccerGameEnv,
     SoccerGame4HEnv10x15N2,
+    SoccerGame4HIndAgObsEnv16x11N2,
     CollectGameEnv,
     CollectGame4HEnv10x10N2,
 )
@@ -273,3 +274,167 @@ class TestGymMake:
         frame = env.render()
         assert frame.shape[2] == 3
         env.close()
+
+
+# ---------------------------------------------------------------
+# Noop behavioral tests
+# ---------------------------------------------------------------
+
+class TestNoopBehavior:
+    """Verify Action.noop (index 0) does not change agent position or direction."""
+
+    def test_noop_does_not_move_agent(self):
+        """Submitting noop must leave agent at the same position."""
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+
+        agent = env.agents[0]
+        agent.state.pos = (5, 5)
+        agent.state.dir = 0  # facing right
+
+        pos_before = tuple(int(c) for c in agent.state.pos)
+        dir_before = int(agent.state.dir)
+
+        actions = {i: Action.noop for i in range(4)}
+        env.step(actions)
+
+        assert tuple(int(c) for c in agent.state.pos) == pos_before, (
+            "Agent position changed after noop"
+        )
+        assert int(agent.state.dir) == dir_before, (
+            "Agent direction changed after noop"
+        )
+
+    def test_noop_does_not_drop_carried_ball(self):
+        """Agent holding ball must still hold it after noop."""
+        from mosaic_multigrid.core.world_object import Ball
+        from mosaic_multigrid.core.constants import Color
+
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+
+        ball = Ball(color=Color.red, index=0)
+        env.agents[0].state.carrying = ball
+
+        actions = {i: Action.noop for i in range(4)}
+        env.step(actions)
+
+        assert env.agents[0].state.carrying is ball, (
+            "Agent dropped ball unexpectedly during noop"
+        )
+
+    def test_noop_does_not_pick_up_adjacent_ball(self):
+        """Agent facing a ball must not pick it up on noop."""
+        from mosaic_multigrid.core.world_object import Ball
+        from mosaic_multigrid.core.constants import Color
+
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+
+        # Clear grid interior and place ball in front of agent
+        ball = Ball(color=Color.red, index=0)
+        env.agents[0].state.pos = (5, 5)
+        env.agents[0].state.dir = 0  # facing right -> (6, 5)
+        env.grid.set(6, 5, ball)
+        env.agents[0].state.carrying = None
+
+        actions = {i: Action.noop for i in range(4)}
+        env.step(actions)
+
+        assert env.agents[0].state.carrying is None, (
+            "Agent picked up ball unexpectedly during noop"
+        )
+        assert env.grid.get(6, 5) is ball, (
+            "Ball was removed from grid during noop"
+        )
+
+
+# ---------------------------------------------------------------
+# Step telemetry tests (position + carrying in infos)
+# ---------------------------------------------------------------
+
+class TestStepTelemetry:
+    """Verify 'position' and 'carrying' keys appear in infos after every step.
+
+    These keys are injected by SoccerGameIndAgObsEnv.step() to support
+    post-hoc credit assignment and trajectory analysis.
+    """
+
+    def test_position_present_in_infos(self):
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        for agent_id in range(4):
+            assert "position" in infos[agent_id], (
+                f"'position' missing from infos[{agent_id}]"
+            )
+
+    def test_carrying_present_in_infos(self):
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        for agent_id in range(4):
+            assert "carrying" in infos[agent_id], (
+                f"'carrying' missing from infos[{agent_id}]"
+            )
+
+    def test_position_is_tuple_of_two_ints(self):
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        for agent_id in range(4):
+            pos = infos[agent_id]["position"]
+            assert isinstance(pos, tuple), f"position is {type(pos)}, expected tuple"
+            assert len(pos) == 2
+            assert all(isinstance(c, int) for c in pos)
+
+    def test_carrying_is_bool(self):
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        for agent_id in range(4):
+            assert isinstance(infos[agent_id]["carrying"], bool)
+
+    def test_position_matches_agent_state(self):
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        for agent in env.agents:
+            expected = tuple(int(c) for c in agent.state.pos)
+            assert infos[agent.index]["position"] == expected, (
+                f"infos position {infos[agent.index]['position']} != "
+                f"agent state {expected}"
+            )
+
+    def test_carrying_false_when_not_carrying(self):
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        for agent in env.agents:
+            agent.state.carrying = None
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        for agent_id in range(4):
+            assert infos[agent_id]["carrying"] is False
+
+    def test_carrying_true_when_agent_holds_ball(self):
+        from mosaic_multigrid.core.world_object import Ball
+        from mosaic_multigrid.core.constants import Color
+
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        env.agents[0].state.carrying = Ball(color=Color.red, index=0)
+        _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+        assert infos[0]["carrying"] is True
+
+    def test_telemetry_present_on_every_step(self):
+        """Telemetry must appear on every step, not just scoring steps."""
+        env = SoccerGame4HIndAgObsEnv16x11N2()
+        env.reset(seed=42)
+        for step_num in range(10):
+            _, _, _, _, infos = env.step({i: Action.noop for i in range(4)})
+            for agent_id in range(4):
+                assert "position" in infos[agent_id], (
+                    f"step {step_num}: 'position' missing for agent {agent_id}"
+                )
+                assert "carrying" in infos[agent_id], (
+                    f"step {step_num}: 'carrying' missing for agent {agent_id}"
+                )

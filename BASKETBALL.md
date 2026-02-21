@@ -101,9 +101,9 @@ env.close()
 ### Scoring
 
 An agent scores by:
-1. Picking up the ball (PICKUP action, face ball and press action 3)
+1. Picking up the ball (PICKUP action, face ball and press action 4)
 2. Navigating to the opposing team's goal cell
-3. Dropping the ball at the goal (DROP action, face goal and press action 4)
+3. Dropping the ball at the goal (DROP action, face goal and press action 5)
 
 When a goal is scored:
 - Scoring team receives +1 reward per agent (positive-only, opponents get 0)
@@ -306,19 +306,25 @@ Basketball has 3 agents per team instead of 2. This creates:
 
 ## Action Space
 
-7 discrete actions per agent (same as all MOSAIC environments):
+8 discrete actions per agent (same as all MOSAIC environments):
 
 | Action | Index | Description |
 |--------|-------|-------------|
-| Turn left | 0 | Rotate 90 degrees counterclockwise |
-| Turn right | 1 | Rotate 90 degrees clockwise |
-| Move forward | 2 | Move one cell in facing direction |
-| Pickup | 3 | Pick up ball from ground, or steal from opponent |
-| Drop | 4 | Score at goal / teleport pass / drop on ground |
-| Toggle | 5 | Unused in basketball |
-| Done | 6 | No-op (skip turn) |
+| Noop | 0 | No operation — AEC compatibility (non-acting agents wait without moving) |
+| Turn left | 1 | Rotate 90 degrees counterclockwise |
+| Turn right | 2 | Rotate 90 degrees clockwise |
+| Move forward | 3 | Move one cell in facing direction |
+| Pickup | 4 | Pick up ball from ground, or steal from opponent |
+| Drop | 5 | Score at goal / teleport pass / drop on ground |
+| Toggle | 6 | Unused in basketball |
+| Done | 7 | Signal task completion |
 
-Total action space: `Dict(0: Discrete(7), ..., 5: Discrete(7))` -- one entry per agent.
+Total action space: `Dict(0: Discrete(8), ..., 5: Discrete(8))` -- one entry per agent.
+
+`noop` (index 0) was added for AEC (Agent-Environment Cycle) compatibility, inspired by
+MeltingPot (Google DeepMind). In AEC mode, non-acting agents submit `noop` so the
+environment can advance without moving them. `done` (index 7) signals intentional task
+completion and is semantically different from `noop`.
 
 ---
 

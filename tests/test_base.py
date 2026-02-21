@@ -108,7 +108,7 @@ class TestConstruction:
         env = SimpleTestEnv()
         act_space = env.action_space
         assert 0 in act_space.spaces
-        assert act_space[0].n == 7  # 7 actions
+        assert act_space[0].n == 8  # 8 actions: noop(0) left(1) right(2) forward(3) pickup(4) drop(5) toggle(6) done(7)
 
 
 # ---------------------------------------------------------------

@@ -38,17 +38,22 @@ from mosaic_multigrid.core import (
 # ---------------------------------------------------------------
 
 class TestAction:
-    def test_seven_actions(self):
-        assert len(Action) == 7
+    def test_eight_actions(self):
+        assert len(Action) == 8
 
     def test_action_values(self):
-        assert Action.left == 0
-        assert Action.right == 1
-        assert Action.forward == 2
-        assert Action.pickup == 3
-        assert Action.drop == 4
-        assert Action.toggle == 5
-        assert Action.done == 6
+        assert Action.noop    == 0
+        assert Action.left    == 1
+        assert Action.right   == 2
+        assert Action.forward == 3
+        assert Action.pickup  == 4
+        assert Action.drop    == 5
+        assert Action.toggle  == 6
+        assert Action.done    == 7
+
+    def test_noop_is_zero(self):
+        """noop=0 is required for AEC compatibility (non-acting agents wait)."""
+        assert Action.noop == 0
 
     def test_no_still_action(self):
         names = [a.name for a in Action]

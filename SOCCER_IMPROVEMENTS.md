@@ -436,6 +436,39 @@ Game Setup:
 
 ---
 
+## Action Space
+
+8 discrete actions per agent (same as all MOSAIC environments):
+
+| Action | Index | Description |
+|--------|-------|-------------|
+| Noop | 0 | No operation — AEC compatibility (non-acting agents wait without moving) |
+| Turn left | 1 | Rotate 90° counter-clockwise |
+| Turn right | 2 | Rotate 90° clockwise |
+| Move forward | 3 | Move one cell in facing direction |
+| Pickup | 4 | Pick up ball from ground, or steal from opponent |
+| Drop | 5 | Score at goal / teleport pass / drop on ground |
+| Toggle | 6 | Unused in soccer |
+| Done | 7 | Signal task completion |
+
+Total action space: `Dict(0: Discrete(8), ..., 3: Discrete(8))` — one entry per agent.
+
+**Why `noop` (index 0) was added — AEC + Parallel API compatibility:**
+
+In AEC (Agent-Environment Cycle) mode, only one agent acts per physics step. All other
+agents must still submit a *valid* action so the environment can advance. Without a no-op,
+non-acting agents would accidentally execute `left` (turn left), corrupting episodes.
+
+`noop=0` is the fix. This design is directly inspired by **MeltingPot** (Google DeepMind),
+which uses `NOOP=0` for the same reason. The `done` action (index 7) signals intentional
+task completion and is semantically different from `noop`.
+
+> **Migration note (v1 → v2):** All action indices shifted **up by 1**.
+> Any pre-trained policy or hardcoded action index from v1 will need updating:
+> `left=0→1, right=1→2, forward=2→3, pickup=3→4, drop=4→5, toggle=5→6, done=6→7`
+
+---
+
 ## Reward Structure
 
 | Event | Reward | Rationale |

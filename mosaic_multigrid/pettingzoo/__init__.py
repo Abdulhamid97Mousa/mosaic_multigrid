@@ -2,8 +2,20 @@
 
 Supports both PettingZoo APIs:
 
-- **Parallel API** (simultaneous stepping): All agents act at once.
-- **AEC API** (Agent Environment Cycle): Agents take turns sequentially.
+- **Parallel API** (simultaneous stepping): All agents submit actions at once
+  via a single ``step(actions_dict)`` call.  This is the native mode for
+  mosaic_multigrid.
+
+- **AEC API** (Agent-Environment Cycle): Agents take turns sequentially.
+  Each call to ``env.step(action)`` advances only the current agent
+  (``env.agent_selection``).  Non-acting agents must submit ``Action.noop``
+  (index 0) so the environment can advance without moving them.
+
+  ``Action.noop`` (index 0) was added to the action enum specifically for
+  AEC compatibility.  Without it, non-acting agents would silently execute
+  ``Action.left`` (the previous index 0), corrupting episodes.  This design
+  is inspired by MeltingPot (Google DeepMind), which uses ``NOOP=0`` for
+  the same reason.
 
 Usage::
 
@@ -12,6 +24,7 @@ Usage::
         to_pettingzoo_env,       # Parallel factory
         to_pettingzoo_aec_env,   # AEC factory
     )
+    from mosaic_multigrid.core.actions import Action
 
     # --- Parallel API (all agents act simultaneously) ---
     PZParallel = to_pettingzoo_env(SoccerGame4HEnv10x15N2)
@@ -29,6 +42,8 @@ Usage::
         obs, reward, term, trunc, info = env.last()
         action = None if term or trunc else env.action_space(agent).sample()
         env.step(action)
+        # Non-active agents automatically receive Action.noop via the
+        # parallel_to_aec converter; you only supply the current agent's action.
 """
 from __future__ import annotations
 
