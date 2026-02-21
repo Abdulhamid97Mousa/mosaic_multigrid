@@ -2,6 +2,10 @@
 
 **Multi-agent gridworld environments for reproducible RL experiments.**
 
+<p align="center">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_gameplay.gif" width="700" alt="Basketball 3vs3 gameplay — mosaic_multigrid">
+</p>
+
 A maintained fork of [gym-multigrid](https://github.com/ArnaudFickinger/gym-multigrid) by Arnaud Fickinger (2020), modernized to the Gymnasium API with Numba JIT-accelerated observations, reproducible seeding.
 
 <p align="center">
@@ -129,9 +133,10 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 ### BasketballGame (3vs3 -- New in v4.0.0)
 
 <p align="center">
-  <img src="figures/basketball_3vs3_gameplay.gif" width="480">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="480">
 </p>
 
+/home/zahra/projects_hamid/GUI_BDI_RL/3rd_party/mosaic_multigrid/figures/basketball_3vs3_render.png
 Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents score by dropping the ball at the opposing team's basket (goal on the baseline). Features **teleport passing**, stealing with dual cooldown, ball respawn, first-to-2-goals termination, and **basketball-court rendering** with three-point arcs, paint rectangles, and center circle.
 
 **IndAgObs variant:** `BasketballGame6HIndAgObsEnv19x11N3` — 6 agents (3vs3), 19x11 grid, 1 ball, positive-only rewards, event tracking.
