@@ -16,8 +16,10 @@ A 3-on-3 basketball game environment for multi-agent reinforcement learning rese
 |----------------|-------------------|-------------|
 | `MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0` | Independent agent views | Each agent sees only its 3x3 local window |
 | `MosaicMultiGrid-Basketball-3vs3-TeamObs-v0` | Independent + teammate features | 3x3 view + relative teammate positions, directions, has_ball |
+| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0` | Solo (no opponent) | Single Green agent (team 1), scores at Blue goal (17, 5). New in v6.0.0. |
+| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0` | Solo (no opponent) | Single Blue agent (team 2), scores at Green goal (1, 5). New in v6.0.0. |
 
-Both environments share the same game mechanics. The only difference is what information each agent receives in its observation.
+The 3vs3 environments share the same game mechanics. The only difference is what information each agent receives in its observation. The solo variants use the same court and goal layout but with a single agent and no opponent — designed for curriculum pre-training.
 
 ---
 
@@ -344,6 +346,54 @@ env = PZParallel(render_mode='rgb_array')
 PZAec = to_pettingzoo_aec_env(BasketballGame6HIndAgObsEnv19x11N3)
 env = PZAec(render_mode='rgb_array')
 ```
+
+---
+
+## Solo Variants (v6.0.0)
+
+Single-agent basketball variants with **no opponent on the court**. The agent learns ball pickup, court navigation, and scoring mechanics in isolation before being deployed into a multi-agent game.
+
+### Why Solo Training?
+
+Training IPPO directly on 3vs3 basketball is hard because:
+- **Sparse reward:** the 6-step scoring chain (navigate → face → pickup → navigate → face → drop) is extremely unlikely to occur by random exploration on a 17x9 playable area
+- **Non-stationarity:** 5 other agents are changing their policies during training, so the agent's "environment" keeps shifting
+- **Credit assignment:** with 3 agents per team, it is hard to determine which agent's actions contributed to a goal
+
+Solo training removes all three problems. The agent faces a stationary environment (no other policies changing) with higher scoring probability (no one to steal the ball or block the path).
+
+### Registered Solo Environments
+
+| Environment ID | Team | Scores at | Checkpoint key |
+|----------------|------|-----------|----------------|
+| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0` | Green (team 1) | Blue goal (17, 5) | `agent_0` (deploy directly as `agent_0`) |
+| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0` | Blue (team 2) | Green goal (1, 5) | `agent_0` (remap to `agent_1` at deployment) |
+
+### Quick Start
+
+```python
+import gymnasium as gym
+from mosaic_multigrid.envs import *
+
+# Solo Green agent on basketball court
+env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0')
+obs, info = env.reset(seed=42)
+print(len(env.unwrapped.agents))  # 1
+print(obs[0]['image'].shape)      # (3, 3, 3)
+
+# Override view_size at make time (no separate gym ID needed)
+env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0', view_size=7)
+obs, info = env.reset(seed=42)
+print(obs[0]['image'].shape)      # (7, 7, 3)
+```
+
+### What Becomes Inert
+
+The solo classes inherit all IndAgObs mechanics, but several become no-ops:
+- **Teleport passing:** no teammates → teammates list is empty → ball drops to ground instead
+- **Stealing:** no opponents on the court → never triggered
+- **Steal cooldown:** never triggered (no steals)
+- **First-to-2-goals:** still active — agent can score twice to end the episode early
 
 ---
 

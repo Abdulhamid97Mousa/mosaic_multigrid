@@ -130,6 +130,39 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 **IndAgObs variant (recommended):** `CollectGame2HIndAgObsEnv10x10N2` -- 2 agents (1v1), 10x10 grid, 3 balls, zero-sum, max_steps=200.
 **Base variant (deprecated):** `CollectGame2HEnv10x10N2` -- same configuration, max_steps=10,000.
 
+### Solo Environments (New in v6.0.0)
+
+Single-agent variants of Soccer and Basketball with **no opponent on the field**. Designed for curriculum pre-training where the agent learns ball pickup, navigation, and scoring mechanics before facing an opponent.
+
+**Why solo training?** Training IPPO on the full 1v1 or 2v2 game suffers from five compounding problems:
+
+1. **Sparse reward:** on a 14x9 playable field, a random agent has negligible probability of completing the 6-step scoring chain (navigate to ball, face, pickup, navigate to goal, face, drop) in 200 steps
+2. **Non-stationarity:** the opponent's policy changes during training, so the agent's "environment" keeps shifting
+3. **Observation poverty:** `view_size=3` covers only 7% of the soccer field; the agent spends most steps seeing empty floor
+4. **Zero-sum curriculum mismatch:** Collect uses `zero_sum=True` (rewards in [-1, +1]) while Soccer uses `zero_sum=False` (rewards in [0, +1]); hot-swapping corrupts the critic baseline
+5. **Under-training:** with ~26 scoring events in 4M steps, the gradient signal is too weak for reliable policy improvement
+
+Solo variants address problems 1-2 directly (no opponent means higher scoring probability and no non-stationarity) and partially address problem 3 (no one to steal the ball, so the agent can practice the scoring chain repeatedly).
+
+
+**view_size is a runtime kwarg**, no separate gymnasium IDs needed:
+
+```python
+# Default: 3x3 partial view
+env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0')
+
+# Override: 7x7 partial view (38.9% field coverage on 16x11)
+env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)
+```
+
+**Checkpoint deployment note:** Green solo produces `agent_0` with `team_index=1` directly deployable as `agent_0` in a 2-player game. Blue solo also produces `agent_0` (only agent) but with `team_index=2`'s checkpoint key remapping is needed when deploying as `agent_1`.
+
+**Inherited mechanics that become inert in solo:**
+- Teleport passing resulktno teammates, drops to ground instead
+- Stealing -- no opponents on the field
+- Steal cooldown -- never triggered
+- First-to-2-goals termination -- still works (agent can score twice to end early)
+
 ### BasketballGame (3vs3 -- New in v4.0.0)
 
 <p align="center">
@@ -162,6 +195,10 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 | **MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0** | New (v4.1.0) | 1v1 soccer, same FIFA grid, pure individual play |
 | **MosaicMultiGrid-Collect-1vs1-IndAgObs-v0** | New (v4.1.0) | 1v1 collection, 3 balls (no draws), natural termination |
 | **MosaicMultiGrid-Collect-1vs1-v0** | New (v4.1.0) | 1v1 base collection (deprecated, use IndAgObs) |
+| **MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0** | New (v6.0.0) | Solo Green agent on 16x11 soccer field, no opponent |
+| **MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0** | New (v6.0.0) | Solo Blue agent on 16x11 soccer field, no opponent |
+| **MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0** | New (v6.0.0) | Solo Green agent on 19x11 basketball court, no opponent |
+| **MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0** | New (v6.0.0) | Solo Blue agent on 19x11 basketball court, no opponent |
 | MosaicMultiGrid-Soccer-v0 | Deprecated | Ball disappears after scoring, no termination, runs 10,000 steps always |
 | MosaicMultiGrid-Collect-v0 | Deprecated | No termination signal after all balls collected, wastes computation |
 | MosaicMultiGrid-Collect-2vs2-v0 | Deprecated | No termination signal after all balls collected |

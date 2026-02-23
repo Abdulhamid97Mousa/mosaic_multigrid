@@ -580,3 +580,73 @@ class SoccerGame2HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             zero_sum=False,
             **kwargs,
         )
+
+
+# -----------------------------------------------------------------------
+# Solo variants (single agent, no opponent) - for curriculum pre-training
+# -----------------------------------------------------------------------
+
+class SoccerSoloGreenIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """Solo Green agent on 16x11 soccer field (no opponent).
+
+    Single agent from team 1 (Green). Must pick up the ball and score
+    at the Blue goal (14, 5). No opponent on the field — removes
+    non-stationarity and increases scoring probability for faster
+    policy convergence during curriculum pre-training.
+
+    The trained checkpoint produces ``agent_0`` with ``team_index=1``
+    (Green). Deploy as ``agent_0`` in a 2-player game without key
+    remapping.
+
+    view_size can be overridden at make time:
+        ``gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)``
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None,
+            width=16,
+            height=11,
+            goal_pos=[[1, 5], [14, 5]],
+            goal_index=[1, 2],
+            num_balls=[1],
+            agents_index=[1],  # Solo Green (team 1)
+            balls_index=[0],
+            zero_sum=False,
+            **kwargs,
+        )
+
+
+class SoccerSoloBlueIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """Solo Blue agent on 16x11 soccer field (no opponent).
+
+    Single agent from team 2 (Blue). Must pick up the ball and score
+    at the Green goal (1, 5). No opponent on the field — removes
+    non-stationarity and increases scoring probability for faster
+    policy convergence during curriculum pre-training.
+
+    The trained checkpoint produces ``agent_0`` with ``team_index=2``
+    (Blue). When deploying as ``agent_1`` in a 2-player game, the
+    checkpoint key must be remapped from ``agent_0`` to ``agent_1``.
+
+    view_size can be overridden at make time:
+        ``gym.make('MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0', view_size=7)``
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None,
+            width=16,
+            height=11,
+            goal_pos=[[1, 5], [14, 5]],
+            goal_index=[1, 2],
+            num_balls=[1],
+            agents_index=[2],  # Solo Blue (team 2)
+            balls_index=[0],
+            zero_sum=False,
+            **kwargs,
+        )

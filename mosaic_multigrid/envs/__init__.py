@@ -13,6 +13,8 @@ from .soccer_game import (
     SoccerGameIndAgObsEnv,
     SoccerGame4HIndAgObsEnv16x11N2,
     SoccerGame2HIndAgObsEnv16x11N2,
+    SoccerSoloGreenIndAgObsEnv16x11,
+    SoccerSoloBlueIndAgObsEnv16x11,
 )
 from .collect_game import (
     CollectGameEnv,
@@ -28,6 +30,8 @@ from .basketball_game import (
     BasketballGameEnv,
     BasketballGameIndAgObsEnv,
     BasketballGame6HIndAgObsEnv19x11N3,
+    BasketballSoloGreenIndAgObsEnv19x11,
+    BasketballSoloBlueIndAgObsEnv19x11,
 )
 from ..wrappers import TeamObsWrapper
 
@@ -114,6 +118,20 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     # -----------------------------------------------------------------------
     'MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0': (BasketballGame6HIndAgObsEnv19x11N3, {}),
     'MosaicMultiGrid-Basketball-3vs3-TeamObs-v0': (Basketball3vs3TeamObsEnv, {}),
+
+    # -----------------------------------------------------------------------
+    # Solo environments (v6.0.0) - single agent, no opponent
+    #
+    # For curriculum pre-training: removes non-stationarity (no opponent
+    # policy changing during training) and increases scoring probability
+    # (no one to steal the ball). Same grid and goal layout as team
+    # variants.  view_size can be overridden at make time:
+    #     gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)
+    # -----------------------------------------------------------------------
+    'MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0': (SoccerSoloGreenIndAgObsEnv16x11, {}),
+    'MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0': (SoccerSoloBlueIndAgObsEnv16x11, {}),
+    'MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0': (BasketballSoloGreenIndAgObsEnv19x11, {}),
+    'MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0': (BasketballSoloBlueIndAgObsEnv19x11, {}),
 }
 
 # -----------------------------------------------------------------------

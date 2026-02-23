@@ -475,3 +475,73 @@ class BasketballGame6HIndAgObsEnv19x11N3(BasketballGameIndAgObsEnv):
             zero_sum=False,
             **kwargs,
         )
+
+
+# -----------------------------------------------------------------------
+# Solo variants (single agent, no opponent) - for curriculum pre-training
+# -----------------------------------------------------------------------
+
+class BasketballSoloGreenIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """Solo Green agent on 19x11 basketball court (no opponent).
+
+    Single agent from team 1 (Green). Must pick up the ball and score
+    at the Blue goal (17, 5). No opponent on the court — removes
+    non-stationarity and increases scoring probability for faster
+    policy convergence during curriculum pre-training.
+
+    The trained checkpoint produces ``agent_0`` with ``team_index=1``
+    (Green). Deploy as ``agent_0`` in a multi-player game without key
+    remapping.
+
+    view_size can be overridden at make time:
+        ``gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0', view_size=7)``
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None,
+            width=19,
+            height=11,
+            goal_pos=[[1, 5], [17, 5]],
+            goal_index=[1, 2],
+            num_balls=[1],
+            agents_index=[1],  # Solo Green (team 1)
+            balls_index=[0],
+            zero_sum=False,
+            **kwargs,
+        )
+
+
+class BasketballSoloBlueIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """Solo Blue agent on 19x11 basketball court (no opponent).
+
+    Single agent from team 2 (Blue). Must pick up the ball and score
+    at the Green goal (1, 5). No opponent on the court — removes
+    non-stationarity and increases scoring probability for faster
+    policy convergence during curriculum pre-training.
+
+    The trained checkpoint produces ``agent_0`` with ``team_index=2``
+    (Blue). When deploying as ``agent_1`` in a multi-player game, the
+    checkpoint key must be remapped from ``agent_0`` to ``agent_1``.
+
+    view_size can be overridden at make time:
+        ``gym.make('MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0', view_size=7)``
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None,
+            width=19,
+            height=11,
+            goal_pos=[[1, 5], [17, 5]],
+            goal_index=[1, 2],
+            num_balls=[1],
+            agents_index=[2],  # Solo Blue (team 2)
+            balls_index=[0],
+            zero_sum=False,
+            **kwargs,
+        )

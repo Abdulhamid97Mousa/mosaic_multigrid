@@ -638,19 +638,71 @@ is a training architecture choice.
 
 ---
 
+### **MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0** and **MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0** (New in v6.0.0)
+
+**Status:** [NEW] single agent, no opponent
+
+```python
+# Solo Green agent on 16x11 soccer field
+env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0')
+obs, _ = env.reset(seed=42)
+
+# Only 1 agent, same field and goal layout as 1v1/2v2
+print(len(env.unwrapped.agents))           # 1
+print(env.unwrapped.agents[0].team_index)  # 1 (Green)
+
+# Override view_size at runtime (no separate gym ID)
+env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)
+```
+
+**Why solo training exists:**
+
+Training IPPO on the full 1v1 or 2v2 soccer game suffers from five compounding problems that make the policy fail to converge in reasonable time:
+
+1. **Sparse reward:** scoring requires a precise 6-step causal chain (navigate to ball → face → pickup → navigate to goal → face → drop). On a 14×9 playable field with 8 actions, a random agent scores approximately 0 times in 100 episodes of 200 steps each.
+
+2. **Non-stationarity:** in multi-agent training, the opponent's policy is changing during training. From each agent's perspective, the "environment" is non-stationary. This is the standard cooperative/competitive MARL challenge (Littman, 1994) but is amplified by the sparse reward -- the agent cannot distinguish "I played well but the opponent got lucky" from "my policy is bad."
+
+3. **Observation poverty:** `view_size=3` covers only 7.1% of the 14×9 playable field. The agent spends most of its time seeing empty floor with no gradient-useful features.
+
+4. **Zero-sum curriculum mismatch:** Collect (curriculum phase 1) uses `zero_sum=True` (rewards in [-1, +1]) while Soccer (phase 2) uses `zero_sum=False` (rewards in [0, +1]). Hot-swapping the environment corrupts the critic's baseline and value estimates.
+5. **Under-training:** with approximately 26 scoring events in 4M training steps, the gradient signal is far too weak for reliable policy improvement. The policy needs hundreds to thousands of scoring events to learn the full pickup-navigate-score chain.
+
+Solo training addresses problems 1 and 2 directly:
+- **No opponent** → higher scoring probability (no one steals the ball or blocks the path)
+- **Stationary environment** → the agent's "world" doesn't change during training
+
+**Two variants for team-correct deployment:**
+
+| Variant | Team | Agent index | Scores at | Deploy as |
+|---------|------|-------------|-----------|-----------|
+| Soccer-Solo-Green | Green (team 1) | `agent_0` | Blue goal (14, 5) | `agent_0` directly |
+| Soccer-Solo-Blue | Blue (team 2) | `agent_0` | Green goal (1, 5) | Remap to `agent_1` |
+
+The policy is team-dependent `pi_agent_0` trained as Green has implicitly learned "move right when carrying ball" via reward signal. Deploying it in the Blue slot (where the correct goal is to the left) will cause own-goals. This is why both Green and Blue solo variants exist.
+
+**Inherited mechanics that become inert:**
+- Teleport passing → no teammates, drops to ground
+- Stealing → no opponents on the field
+- Steal cooldown → never triggered
+- First-to-2-goals termination → still active (agent scores twice to end)
+
+---
+
 ### **Environment Comparison**
 
-| Aspect | `Soccer-v0` | `Soccer-Enhanced-v0` | `Soccer-2vs2-TeamObs-v0` |
-|--------|-------------|---------------------|---------------------|
-| **Status** | Deprecated | Recommended | Recommended |
-| **Ball respawn** | No | Yes | Yes |
-| **Termination** | Never | First to 2 goals | First to 2 goals |
-| **Observability** | No ball carrier info | STATE channel encoding | STATE + teammate features |
-| **Teammate info** | None | None (independent views) | Positions + directions + has_ball |
-| **Passing strategy** | N/A (broken) | Blind teleport | Informed (knows teammate location) |
-| **Cooldown** | None | 10-step dual | 10-step dual |
-| **Map size** | 15x10 | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) |
-| **Use case** | Legacy only | Standard RL training | Team coordination research |
+| Aspect | `Soccer-v0` | `Soccer-Enhanced-v0` | `Soccer-2vs2-TeamObs-v0` | `Soccer-Solo-*-v0` |
+|--------|-------------|---------------------|---------------------|---------------------|
+| **Status** | Deprecated | Recommended | Recommended | New (v6.0.0) |
+| **Agents** | 4 (2v2) | 4 (2v2) | 4 (2v2) | 1 (solo, no opponent) |
+| **Ball respawn** | No | Yes | Yes | Yes |
+| **Termination** | Never | First to 2 goals | First to 2 goals | First to 2 goals |
+| **Observability** | No ball carrier info | STATE channel encoding | STATE + teammate features | STATE channel encoding |
+| **Teammate info** | None | None (independent views) | Positions + directions + has_ball | N/A (no teammates) |
+| **Passing strategy** | N/A (broken) | Blind teleport | Informed (knows teammate location) | N/A (drops to ground) |
+| **Cooldown** | None | 10-step dual | 10-step dual | N/A (no opponents) |
+| **Map size** | 15x10 | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) |
+| **Use case** | Legacy only | Standard RL training | Team coordination research | Curriculum pre-training |
 
 ---
 
@@ -665,6 +717,7 @@ is a training architecture choice.
 | Passing | Adjacency handoff (1 cell) | [FIXED] Teleport to any teammate |
 | Map size | 15x10 | [FIXED] 16x11 (FIFA ratio) |
 | Teammate awareness | None (independent views) | [NEW] TeamObs variant (SMAC-style) |
+| Solo pre-training | Not available | [NEW] Solo Green/Blue variants (v6.0.0) |
 | Training time | ~6 weeks | [IMPROVED] ~3 weeks (natural termination) |
 
 ---
