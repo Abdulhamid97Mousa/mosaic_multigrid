@@ -585,3 +585,49 @@ class Switch(WorldObj):
 
         # Small centered square
         fill_coords(img, point_in_rect(0.3, 0.7, 0.3, 0.7), c)
+
+
+class EndZone(WorldObj):
+    """
+    American football end zone tile.
+
+    Agents score a touchdown by walking (forward action) onto an opposing
+    team's end zone cell while carrying a ball.  Unlike :class:`ObjectGoal`,
+    agents can **overlap** this tile -- scoring happens on movement, not on
+    a drop action.
+
+    Attributes
+    ----------
+    team_index : int
+        The team that *owns* (defends) this end zone.  Opponents score here.
+    reward : float
+        Reward value awarded on a successful touchdown.
+    """
+    type_name = 'endzone'
+
+    def __new__(
+        cls,
+        color: str = Color.green,
+        team_index: int = 1,
+        reward: float = 1.0,
+    ):
+        obj = super().__new__(cls, color=color)
+        obj.team_index = team_index
+        obj.reward = reward
+        return obj
+
+    def can_overlap(self) -> bool:
+        # Agents can walk onto end zone tiles (touchdown on entry)
+        return True
+
+    def render(self, img: ndarray[np.uint8]) -> None:
+        c = self.color.rgb()
+
+        # Solid fill at 60% brightness (semi-transparent look via dimming)
+        fill_coords(img, point_in_rect(0.0, 1.0, 0.0, 1.0), (c * 0.5).astype(np.uint8))
+
+        # Diagonal stripes for end-zone visual identity
+        stripe_color = (c * 0.75).astype(np.uint8)
+        for offset in range(-2, 5):
+            x0 = offset * 0.25
+            fill_coords(img, point_in_rect(x0, x0 + 0.12, 0.0, 1.0), stripe_color)

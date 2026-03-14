@@ -344,7 +344,7 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         return obs, info
 
     def step(self, actions):
-        """Step with cooldown decrements and event tracking in info."""
+        """Step with cooldown decrements, walk-in scoring, and event tracking."""
         # Decrement action cooldowns before processing actions
         for agent in self.agents:
             if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
@@ -355,9 +355,45 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         steals_before = len(self.steals_completed)
         obs, rewards, terms, truncs, infos = super().step(actions)
 
-        # Inject per-agent position and carrying status for telemetry.
-        # This runs first to populate the defaultdict keys so that the
-        # event injection loops below can iterate over all agent IDs.
+        # Walk-in scoring: check if agent is standing on goal square while carrying
+        for agent in self.agents:
+            if agent.state.carrying is not None and not agent.state.terminated:
+                pos = agent.state.pos
+                pos_tuple = (int(pos[0]), int(pos[1]))
+
+                # Check if agent is on a goal position
+                for goal_pos, goal_team_idx in zip(self.goal_pos, self.goal_index):
+                    goal_pos_tuple = tuple(goal_pos)
+
+                    # Agent scored if standing on opponent's goal while carrying ball
+                    if pos_tuple == goal_pos_tuple and goal_team_idx != agent.team_index:
+                        ball = agent.state.carrying
+
+                        # Ball index 0 is wildcard (can score at any goal)
+                        if ball.index in (0, goal_team_idx):
+                            # GOAL! Award team reward
+                            self._team_reward(agent.team_index, rewards, 1.0)
+
+                            # Track which agent scored
+                            self.goal_scored_by.append({
+                                "step": self.step_count,
+                                "scorer": agent.index,
+                                "team": agent.team_index,
+                            })
+
+                            # Remove ball from agent and respawn
+                            agent.state.carrying = None
+                            new_ball = Ball(color=ball.color, index=ball.index)
+                            self.place_obj(new_ball)
+
+                            # Track team score and check win condition
+                            self.team_scores[agent.team_index] += 1
+                            if self.team_scores[agent.team_index] >= self.goals_to_win:
+                                for a in self.agents:
+                                    a.state.terminated = True
+                            break
+
+        # Inject per-agent position and carrying status for telemetry
         for agent in self.agents:
             infos[agent.index]["position"] = tuple(int(c) for c in agent.state.pos)
             infos[agent.index]["carrying"] = agent.state.carrying is not None
@@ -438,17 +474,15 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         rewards: dict[int, float],
     ):
         """
-        Drop with teleport passing, scoring, ball respawn, and termination.
+        Drop with teleport passing (scoring removed - now handled in step()).
 
         Priority chain:
-        1. **Score** -- drop ball on matching ObjectGoal -> team reward + respawn.
-        2. **Teleport pass** -- ball teleports to a random teammate anywhere
+        1. **Teleport pass** -- ball teleports to a random teammate anywhere
            on the grid (teammate must not already be carrying).
-        3. **Ground drop** -- drop onto empty cell in front (fallback).
+        2. **Ground drop** -- drop onto empty cell in front (fallback).
 
-        Teleport passing replaces the old 1-cell adjacency handoff. The ball
-        transfers instantly regardless of distance, creating attack/defense
-        dynamics when combined with the stealing mechanic.
+        Scoring is now handled in step() via walk-in detection when agent
+        is standing on opponent's goal square while carrying the ball.
         """
         if agent.state.carrying is None:
             return
@@ -456,38 +490,7 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Priority 1: Try scoring on opposing team's ObjectGoal
-        if fwd_obj is not None and fwd_obj.type.value == 'objgoal':
-            ball = agent.state.carrying
-            if fwd_obj.target_type == ball.type.value:
-                # Ball index 0 is wildcard (can score at any goal)
-                if ball.index in (0, fwd_obj.index):
-                    if fwd_obj.index != agent.team_index:  # no own-goals
-                        self._team_reward(agent.team_index, rewards, fwd_obj.reward)
-                        agent.state.carrying = None
-
-                        # Track which agent scored
-                        self.goal_scored_by.append({
-                            "step": self.step_count,
-                            "scorer": agent.index,
-                            "team": agent.team_index,
-                        })
-
-                        # Respawn ball with same color and team index
-                        new_ball = Ball(
-                            color=ball.color,
-                            index=ball.index,
-                        )
-                        self.place_obj(new_ball)
-
-                        # Track team score and check win condition
-                        self.team_scores[agent.team_index] += 1
-                        if self.team_scores[agent.team_index] >= self.goals_to_win:
-                            for a in self.agents:
-                                a.state.terminated = True
-                        return
-
-        # Priority 2: Teleport pass to a teammate (anywhere on the grid)
+        # Priority 1: Teleport pass to a teammate (anywhere on the grid)
         teammates = [
             a for a in self.agents
             if a.team_index == agent.team_index
@@ -509,7 +512,7 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             })
             return
 
-        # Priority 3: Drop on empty ground (fallback)
+        # Priority 2: Drop on empty ground (fallback)
         if fwd_obj is None and self._agent_at(fwd_pos) is None:
             self.grid.set(*fwd_pos, agent.state.carrying)
             agent.state.carrying.cur_pos = fwd_pos

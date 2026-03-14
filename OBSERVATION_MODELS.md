@@ -4,6 +4,34 @@
 
 ---
 
+## v6.3.0 Update: Walk-In Scoring
+
+**Breaking change:** Soccer and Basketball now use **walk-in scoring** instead of drop-based scoring.
+
+**Previous behavior (v6.0-6.2):** Agents had to execute `DROP` action while facing the goal to score.
+
+**New behavior (v6.3+):** Agents score by **walking into the goal square while carrying the ball**.
+
+**Impact on observations:**
+- The observation space remains unchanged (3x3 image, direction, mission)
+- The STATE channel encoding for ball carrying (values 100-103) is still used
+- Agents still need to detect goal squares in their local view
+- The action space changes: `DROP` no longer scores, only passes or drops
+
+**Why this matters for observation models:**
+- **Simpler learning objective:** Agents only need to learn navigate → pickup → navigate → score (3 steps)
+- **No action sequencing:** Don't need to learn "face goal → press DROP" coordination
+- **Faster convergence:** Reduces action space complexity for both IndObs and TeamObs variants
+
+**Consistent across all sports:**
+- Soccer: Walk into single goal square (1x1 tile)
+- Basketball: Walk into single goal square (1x1 tile)
+- American Football: Walk into end zone column (1x9 tiles)
+
+All three sports use the same walk-in mechanic with teleport passing and stealing.
+
+---
+
 ## 1. Motivation: The Partial Observability Problem
 
 MOSAIC multigrid environments use **partial observability** -- each agent sees only a

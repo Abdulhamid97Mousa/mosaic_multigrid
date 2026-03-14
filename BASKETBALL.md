@@ -2,11 +2,73 @@
 
 ## Overview
 
-A 3-on-3 basketball game environment for multi-agent reinforcement learning research. Teams score by carrying the ball to the opposing team's hoop on the baseline. Built on top of the MOSAIC multigrid engine with the same mechanics as Soccer IndAgObs (teleport passing, steal cooldown, ball respawn, first-to-N-goals termination).
+A 3-on-3 basketball game environment for multi-agent reinforcement learning research. Teams score by **walking into the opposing team's hoop while carrying the ball**. Built on top of the MOSAIC multigrid engine with the same mechanics as Soccer IndAgObs (walk-in scoring, teleport passing, steal cooldown, ball respawn, first-to-N-goals termination).
 
 <p align="center">
   <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="600">
 </p>
+
+---
+
+## v6.3.0 Breaking Change: Walk-In Scoring
+
+### **New Scoring Mechanic (Simplified for Better Learning)**
+
+**Previous behavior (v6.0-6.2):** Agents had to execute `DROP` action while facing the goal square to score.
+
+**New behavior (v6.3+):** Agents score by **walking into the goal square while carrying the ball**. Simplified to:
+1. Navigate to ball
+2. Execute `PICKUP` to grab ball
+3. Navigate to opponent's goal and **walk into it** → automatic score!
+
+**Why this change?**
+- **Faster learning:** Removes one action step (no need to face goal and press DROP)
+- **More intuitive:** Walking into hoop while carrying ball = score (like driving to the basket)
+- **Consistent with Soccer and American Football:** Uses same walk-into-goal mechanic
+- **Emergent behaviors appear sooner:** Passing, stealing, defense strategies develop faster
+
+**Implementation:**
+```python
+def step(self, actions):
+    obs, rewards, terms, truncs, infos = super().step(actions)
+
+    # Walk-in scoring: check if agent is standing on goal square while carrying
+    for agent in self.agents:
+        if agent.state.carrying is not None and not agent.state.terminated:
+            pos = agent.state.pos
+            pos_tuple = (int(pos[0]), int(pos[1]))
+
+            # Check if agent is on a goal position
+            for goal_pos, goal_team_idx in zip(self.goal_pos, self.goal_index):
+                goal_pos_tuple = tuple(goal_pos)
+
+                # Agent scored if standing on opponent's goal while carrying ball
+                if pos_tuple == goal_pos_tuple and goal_team_idx != agent.team_index:
+                    ball = agent.state.carrying
+
+                    # Ball index 0 is wildcard (can score at any goal)
+                    if ball.index in (0, goal_team_idx):
+                        # GOAL! Award team reward
+                        self._team_reward(agent.team_index, rewards, 1.0)
+
+                        # Remove ball from agent and respawn
+                        agent.state.carrying = None
+                        new_ball = Ball(color=ball.color, index=ball.index)
+                        self.place_obj(new_ball)
+
+                        # Track team score and check win condition
+                        self.team_scores[agent.team_index] += 1
+                        if self.team_scores[agent.team_index] >= self.goals_to_win:
+                            for a in self.agents:
+                                a.state.terminated = True
+                        break
+
+    return obs, rewards, terms, truncs, infos
+```
+
+**DROP action behavior change:**
+- **v6.0-6.2:** DROP = score at goal OR pass OR drop on ground
+- **v6.3+:** DROP = teleport pass to teammate OR drop on ground (scoring removed from DROP)
 
 ---
 
@@ -100,12 +162,45 @@ env.close()
 
 ## Game Mechanics
 
-### Scoring
+### Walk-In Scoring (v7.0+)
 
 An agent scores by:
 1. Picking up the ball (PICKUP action, face ball and press action 4)
-2. Navigating to the opposing team's goal cell
-3. Dropping the ball at the goal (DROP action, face goal and press action 5)
+2. Navigating to the opposing team's goal square
+3. **Walking into the goal square while carrying the ball** → automatic score!
+
+**Basketball goal layout:**
+```
+Single goal square per team (1x1 tile):
+- Green team (team 1) defends goal at (1, 5) - left baseline
+- Blue team (team 2) defends goal at (17, 5) - right baseline
+
+To score: Agent must step onto opponent's goal square while carrying ball
+```
+
+**Detection in step():**
+```python
+# After each step, check if any agent is standing on a goal while carrying
+for agent in self.agents:
+    if agent.state.carrying is not None:
+        pos = agent.state.pos
+        pos_tuple = (int(pos[0]), int(pos[1]))
+
+        # Check all goal positions
+        for goal_pos, goal_team_idx in zip(self.goal_pos, self.goal_index):
+            if tuple(goal_pos) == pos_tuple:
+                # Agent is on a goal! Is it opponent's goal?
+                if goal_team_idx != agent.team_index:
+                    # GOAL! Score, respawn ball, check win condition
+                    self._team_reward(agent.team_index, rewards, 1.0)
+                    agent.state.carrying = None
+                    self.place_obj(new_ball)
+                    self.team_scores[agent.team_index] += 1
+                    if self.team_scores[agent.team_index] >= self.goals_to_win:
+                        # Team wins - terminate episode
+                        for a in self.agents:
+                            a.state.terminated = True
+```
 
 When a goal is scored:
 - Scoring team receives +1 reward per agent (positive-only, opponents get 0)
@@ -113,20 +208,37 @@ When a goal is scored:
 - Team scores are tracked (first to `goals_to_win` terminates the episode)
 - `goal_scored_by`, `passes_completed`, and `steals_completed` events are recorded in the info dict for post-hoc credit assignment analysis
 
-### Teleport Passing
+**Why walk-in over drop-based scoring?**
+- **Simpler learning objective:** Navigate → pickup → navigate → score (3 steps)
+- **No action sequencing:** Don't need to learn "face goal → press DROP" sequence
+- **More intuitive:** Like driving to the basket - carry ball to the hoop
+- **Faster convergence:** Reduces action space complexity for RL agents
+
+---
+
+### Teleport Passing (All Environments)
+
+> **Consistent across Soccer, Basketball, and American Football**
 
 The DROP action uses **teleport passing** (identical to Soccer IndAgObs):
 
 ```python
 # Priority order when an agent presses DROP while carrying the ball:
-# 1. Score at goal (if facing an opponent goal cell)
-# 2. Teleport pass to a random eligible teammate (anywhere on the grid)
-# 3. Drop ball on ground (if forward cell is empty)
+# 1. Teleport pass to a random eligible teammate (anywhere on the grid)
+# 2. Drop ball on ground (if forward cell is empty)
 ```
 
 Teleport passing means the ball instantly transfers to a teammate anywhere on the court. The passer does NOT need to see the receiver. This makes passing a timing decision ("when to pass") rather than a positioning puzzle ("where to stand").
 
-### Stealing
+**AEC (Agent-Environment Cycle) support:**
+- Agents execute actions in sequential order
+- One agent moves → others see updated positions
+- Enables coordinated steals: Agent A moves away → Agent B sees opportunity → Agent B steals
+- Natural turn-based dynamics for multi-agent coordination
+
+### Stealing (All Environments)
+
+> **Consistent across Soccer, Basketball, and American Football**
 
 An agent can steal the ball from an opponent by facing them and pressing PICKUP:
 
@@ -139,6 +251,60 @@ An agent can steal the ball from an opponent by facing them and pressing PICKUP:
 ```
 
 **Dual cooldown**: After a successful steal, BOTH the stealer and victim enter a 10-step cooldown during which neither can steal or be stolen from. This prevents ping-pong stealing.
+
+**AEC support for coordinated defense:**
+- **Sequential execution:** Agent 0 moves → Agent 1 sees new position → Agent 2 decides to steal
+- **Reactive defense:** Teammates can see ball carrier move and react in same timestep
+- **Strategic positioning:** Defense agents can block passing lanes based on real-time positions
+
+### Goal Representation Across Sports
+
+| Sport | Goal Type | Size | Scoring Method |
+|-------|-----------|------|----------------|
+| **Soccer** | Single square | 1x1 tile | Walk into goal square while carrying ball |
+| **Basketball** | Single square | 1x1 tile | Walk into goal square while carrying ball |
+| **American Football** | End zone | Full vertical column (1x9 tiles) | Walk into end zone column while carrying ball |
+
+**Soccer/Basketball:**
+```
+Single goal square:
+  W W W W W W W W W W W W W W W W
+  W . . . . . . . . . . . . . . W
+  W . . . . . . . . . . . . . . W
+  W . . . . . . . . . . . . . . W
+  W . . . . . . . . . . . . . . W
+  W G . . . . . . . . . . . . G W  ← Single goal squares
+  W . . . . . . . . . . . . . . W     at (1,5) and (14,5)
+  W . . . . . . . . . . . . . . W
+  W . . . . . . . . . . . . . . W
+  W . . . . . . . . . . . . . . W
+  W W W W W W W W W W W W W W W W
+```
+
+**American Football:**
+```
+End zone (full column):
+  W W W W W W W W W W W W W W W W
+  W E . . . . . . . . . . . . E W  ← Entire column is scoring zone
+  W E . . . . . . . . . . . . E W     Agent can score from any row
+  W E . . . . . . . . . . . . E W     in the end zone column
+  W E . . . . . . . . . . . . E W
+  W E . . . . . . . . . . . . E W     at x=1 and x=14
+  W E . . . . . . . . . . . . E W
+  W E . . . . . . . . . . . . E W
+  W E . . . . . . . . . . . . E W
+  W E . . . . . . . . . . . . E W
+  W W W W W W W W W W W W W W W W
+```
+
+**Why different goal sizes?**
+- **Soccer/Basketball:** Single goal square = precision scoring, harder target
+- **American Football:** End zone column = larger target, easier to reach, promotes running plays
+
+**All three use the same walk-in mechanic:**
+- Agent carries ball → steps into goal area → automatic score
+- No need to face goal or press DROP
+- Consistent learning objective across all sports
 
 ### Ball Respawn
 
@@ -276,24 +442,33 @@ frame = env.render()
 
 ---
 
-## Comparison with Soccer
+## Comparison with Soccer and American Football
 
-| Aspect | Soccer (2v2) | Basketball (3vs3) |
-|--------|-------------|------------------|
-| Grid size | 16 x 11 (14x9 playable) | 19 x 11 (17x9 playable) |
-| Teams | 2v2 (4 agents) | 3vs3 (6 agents) |
-| Team colors | Green vs Red | Green vs Blue |
-| Goal positions | (1, 5) and (14, 5) | (1, 5) and (17, 5) |
-| Aspect ratio | 1.56:1 (FIFA) | 1.89:1 (NBA) |
-| Rendering | FIFA field (grass, lines) | Basketball court (hardwood, arcs, hoops) |
-| Teleport passing | Yes | Yes |
-| Steal cooldown | 10 steps (dual) | 10 steps (dual) |
-| Ball respawn | Yes | Yes |
-| Goals to win | 2 | 2 |
-| Max steps | 200 | 200 |
-| Zero-sum | Yes | Yes |
-| Observation (IndAgObs) | 3x3 local view | 3x3 local view |
-| TeamObs teammates | N=1 (1 teammate in 2v2) | N=2 (2 teammates in 3vs3) |
+| Aspect | Soccer (2v2) | Basketball (3vs3) | American Football |
+|--------|-------------|------------------|-------------------|
+| Grid size | 16 x 11 (14x9 playable) | 19 x 11 (17x9 playable) | 16 x 11 (14x9 playable) |
+| Teams | 2v2 (4 agents) | 3vs3 (6 agents) | 1v1, 2v2, 3v3 |
+| Team colors | Green vs Red | Green vs Blue | Green vs Blue |
+| Goal type | Single square (1x1) | Single square (1x1) | End zone column (1x9) |
+| Goal positions | (1, 5) and (14, 5) | (1, 5) and (17, 5) | Columns x=1 and x=14 |
+| Scoring method | Walk into goal square | Walk into goal square | Walk into end zone column |
+| Aspect ratio | 1.56:1 (FIFA) | 1.89:1 (NBA) | 1.56:1 (NFL field) |
+| Rendering | FIFA field (grass, lines) | Basketball court (hardwood, arcs, hoops) | Football field (turf, end zones) |
+| Teleport passing | Yes | Yes | Yes |
+| Steal cooldown | 10 steps (dual) | 10 steps (dual) | 10 steps (dual) |
+| Ball respawn | Yes | Yes | Yes |
+| Goals to win | 2 | 2 | 2 |
+| Max steps | 200 | 200 | 200 |
+| Zero-sum | No | No | No |
+| Observation (IndAgObs) | 3x3 local view | 3x3 local view | 3x3 local view |
+| TeamObs teammates | N=1 (1 teammate in 2v2) | N=2 (2 teammates in 3vs3) | N=1 or N=2 (depending on variant) |
+
+**Consistent mechanics across all three sports:**
+- Walk-in scoring (carry ball → step into goal area → automatic score)
+- Teleport passing (DROP action transfers ball to random teammate anywhere)
+- Stealing with dual cooldown (prevents ping-pong stealing)
+- AEC support (sequential agent execution for coordinated defense)
+- Ball respawn after each goal
 
 ### Key Difference: Team Size
 
@@ -317,7 +492,7 @@ Basketball has 3 agents per team instead of 2. This creates:
 | Turn right | 2 | Rotate 90 degrees clockwise |
 | Move forward | 3 | Move one cell in facing direction |
 | Pickup | 4 | Pick up ball from ground, or steal from opponent |
-| Drop | 5 | Score at goal / teleport pass / drop on ground |
+| Drop | 5 | Teleport pass to teammate / drop on ground (v7.0+: scoring removed) |
 | Toggle | 6 | Unused in basketball |
 | Done | 7 | Signal task completion |
 
@@ -327,6 +502,10 @@ Total action space: `Dict(0: Discrete(8), ..., 5: Discrete(8))` -- one entry per
 MeltingPot (Google DeepMind). In AEC mode, non-acting agents submit `noop` so the
 environment can advance without moving them. `done` (index 7) signals intentional task
 completion and is semantically different from `noop`.
+
+**v6.3.0 change:** The `DROP` action no longer scores at goals. Scoring is now handled
+automatically when an agent walks into the goal square while carrying the ball. The DROP
+action only handles teleport passing and ground drops.
 
 ---
 

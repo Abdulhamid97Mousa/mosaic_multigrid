@@ -22,6 +22,7 @@ from .world_object import (
     Ball,
     Box,
     Door,
+    EndZone,
     Floor,
     Goal,
     Key,

@@ -33,6 +33,14 @@ from .basketball_game import (
     BasketballSoloGreenIndAgObsEnv19x11,
     BasketballSoloBlueIndAgObsEnv19x11,
 )
+from .american_football_game import (
+    AmericanFootballEnv,
+    AmericanFootballSoloGreenEnv16x11,
+    AmericanFootballSoloBlueEnv16x11,
+    AmericanFootball1v1Env16x11,
+    AmericanFootball2v2Env16x11,
+    AmericanFootball3v3Env16x11,
+)
 from ..wrappers import TeamObsWrapper
 
 
@@ -74,6 +82,22 @@ class Basketball3vs3TeamObsEnv(TeamObsWrapper):
 
     def __init__(self, **kwargs):
         super().__init__(BasketballGame6HIndAgObsEnv19x11N3(**kwargs))
+
+
+class AmericanFootball2v2TeamObsEnv(TeamObsWrapper):
+    """American Football 2v2 (16x11, IndAgObs) with SMAC-style teammate awareness."""
+    metadata = AmericanFootball2v2Env16x11.metadata
+
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootball2v2Env16x11(**kwargs))
+
+
+class AmericanFootball3v3TeamObsEnv(TeamObsWrapper):
+    """American Football 3v3 (16x11, IndAgObs) with SMAC-style teammate awareness."""
+    metadata = AmericanFootball3v3Env16x11.metadata
+
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootball3v3Env16x11(**kwargs))
 
 
 # -----------------------------------------------------------------------
@@ -132,6 +156,22 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0': (SoccerSoloBlueIndAgObsEnv16x11, {}),
     'MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0': (BasketballSoloGreenIndAgObsEnv19x11, {}),
     'MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0': (BasketballSoloBlueIndAgObsEnv19x11, {}),
+
+    # -----------------------------------------------------------------------
+    # American Football environments (v7.0.0) - touchdown scoring
+    #
+    # 16x11 grid (same as Soccer), simplified scoring: walk INTO opponent's
+    # end zone while carrying ball (no drop action needed). End zones are
+    # vertical columns at x=1 (Green's, Blue scores) and x=14 (Blue's,
+    # Green scores). Supports stealing and passing mechanics.
+    # -----------------------------------------------------------------------
+    'MosaicMultiGrid-AmericanFootball-Solo-Green-v0': (AmericanFootballSoloGreenEnv16x11, {}),
+    'MosaicMultiGrid-AmericanFootball-Solo-Blue-v0': (AmericanFootballSoloBlueEnv16x11, {}),
+    'MosaicMultiGrid-AmericanFootball-1v1-v0': (AmericanFootball1v1Env16x11, {}),
+    'MosaicMultiGrid-AmericanFootball-2v2-v0': (AmericanFootball2v2Env16x11, {}),
+    'MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v0': (AmericanFootball2v2TeamObsEnv, {}),
+    'MosaicMultiGrid-AmericanFootball-3v3-v0': (AmericanFootball3v3Env16x11, {}),
+    'MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v0': (AmericanFootball3v3TeamObsEnv, {}),
 }
 
 # -----------------------------------------------------------------------

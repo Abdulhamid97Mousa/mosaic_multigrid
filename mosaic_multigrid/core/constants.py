@@ -45,6 +45,7 @@ class Type(str, IndexedEnum):
     # MOSAIC extensions
     objgoal = 'objgoal'
     switch = 'switch'
+    endzone = 'endzone'
 
 
 class Color(str, IndexedEnum):
