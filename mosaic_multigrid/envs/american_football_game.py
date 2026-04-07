@@ -1,14 +1,24 @@
 """
 American Football environment for MOSAIC MultiGrid.
 
-Simplified scoring mechanics:
-- Agents score by walking INTO the opponent's end zone while carrying the ball (touchdown)
+v6.4.0: Added reward shaping (SMAC-style dense rewards), steal cooldown,
+teleport passing, and event tracking.
+
+Scoring mechanics:
+- Agents score by walking INTO the opponent's end zone while carrying the ball
 - No need to use 'drop' action to score
-- Opponents can steal the ball using 'pickup' action
+- Opponents can steal the ball using 'pickup' action (with cooldown)
 - Teammates can pass using 'drop' action (teleport pass)
 - Agents cannot score on their own end zone
 
-Grid: 16×11 (same as Soccer)
+Reward shaping (reward_shaping=True, default):
+- +0.1 for picking up the ball (first time per possession)
+- +0.01 per column moved toward opponent's end zone while carrying
+- -0.01 per column moved away from opponent's end zone while carrying
+- Follows SMAC's dense reward pattern for trainability.
+- Set reward_shaping=False for sparse evaluation (touchdown only).
+
+Grid: 16x11 (same as Soccer)
 - End zones at columns 1 (Green's, Blue scores here) and 14 (Blue's, Green scores here)
 - Playable midfield: columns 2-13, rows 1-9
 """
@@ -25,11 +35,15 @@ from mosaic_multigrid.rendering import render_american_football
 
 class AmericanFootballEnv(MultiGridEnv):
     """
-    Base American Football environment.
+    Base American Football environment with SMAC-style reward shaping.
 
     Scoring: Walk into opponent's end zone while carrying ball (touchdown).
     End zones span full column height at each end of the field.
     Episode terminates when a team reaches goals_to_win touchdowns.
+
+    Reward shaping follows SMAC (Samvelyan et al., 2019):
+    - Dense rewards by default for trainability
+    - Sparse mode available for evaluation (reward_shaping=False)
     """
 
     def __init__(
@@ -46,19 +60,27 @@ class AmericanFootballEnv(MultiGridEnv):
         render_mode: str | None = None,
         max_steps: int = 300,
         goals_to_win: int = 2,
+        reward_shaping: bool = True,
+        steal_cooldown: int = 10,
     ):
         self.num_balls = num_balls
         self.balls_index = balls_index or []
         self.balls_reward = balls_reward or []
         self.zero_sum = zero_sum
         self.goals_to_win = goals_to_win
+        self.reward_shaping = reward_shaping
+        self.steal_cooldown = steal_cooldown
 
         # Store end zone positions and team ownership
         # Will be populated in _gen_grid
         self.endzone_positions: dict[tuple[int, int], int] = {}
-        
+
         # Track team scores for termination
         self.team_scores: dict[int, int] = {}
+
+        # Reward shaping state (per-agent tracking)
+        self._prev_carrying: dict[int, bool] = {}
+        self._prev_x: dict[int, int] = {}
 
         agents_index = agents_index or []
         agents = [
@@ -66,7 +88,7 @@ class AmericanFootballEnv(MultiGridEnv):
                 index=i,
                 team_index=team,
                 view_size=view_size,
-                see_through_walls=True,
+                see_through_walls=False,
             )
             for i, team in enumerate(agents_index)
         ]
@@ -76,7 +98,7 @@ class AmericanFootballEnv(MultiGridEnv):
             width=width if width is not None else size,
             height=height if height is not None else size,
             max_steps=max_steps,
-            see_through_walls=True,
+            see_through_walls=False,
             agent_view_size=view_size,
             render_mode=render_mode,
         )
@@ -101,10 +123,7 @@ class AmericanFootballEnv(MultiGridEnv):
 
         # Place balls in midfield (columns 2-13)
         for ball_index in range(self.num_balls):
-            # Use grey for American Football (more consistent with sport)
             ball = Ball(Color.grey, ball_index)
-
-            # Place in midfield area only (not in end zones)
             self.place_obj(
                 ball,
                 top=(2, 1),
@@ -122,16 +141,37 @@ class AmericanFootballEnv(MultiGridEnv):
             )
 
     def get_full_render(self, highlight: bool, tile_size: int):
-        """Override to use American Football-style rendering instead of default grid tiles."""
+        """Override to use American Football-style rendering."""
         return render_american_football(self, tile_size)
 
+    def _target_endzone_x(self, agent: Agent) -> int:
+        """Return the x-column of the end zone where this agent scores."""
+        # team_index=0 (Green) scores at column width-2 (Blue's end zone)
+        # team_index=1 (Blue) scores at column 1 (Green's end zone)
+        if agent.team_index == 0:
+            return self.width - 2
+        else:
+            return 1
+
     def reset(self, **kwargs):
-        """Reset with team score tracking."""
+        """Reset with team score and reward shaping tracking."""
         obs, info = super().reset(**kwargs)
 
-        # Initialize team scores (one entry per unique team index)
+        # Initialize team scores
         unique_teams = set(agent.team_index for agent in self.agents)
         self.team_scores = {team: 0 for team in unique_teams}
+        self.goal_scored_by: list[dict] = []
+        self.passes_completed: list[dict] = []
+        self.steals_completed: list[dict] = []
+
+        # Initialize steal cooldowns
+        for agent in self.agents:
+            agent.action_cooldown = 0
+
+        # Initialize reward shaping state
+        for agent in self.agents:
+            self._prev_carrying[agent.index] = agent.state.carrying is not None
+            self._prev_x[agent.index] = int(agent.state.pos[0])
 
         return obs, info
 
@@ -141,12 +181,8 @@ class AmericanFootballEnv(MultiGridEnv):
         rewards: dict[int, float],
         reward: float = 1.0,
     ):
-        """
-        Distribute reward to all agents on *scoring_team*.
-
-        If ``self.zero_sum`` is ``True``, agents on other teams receive
-        ``-reward``.
-        """
+        """Distribute reward to all agents on scoring_team.
+        If zero_sum, agents on other teams receive -reward."""
         for agent in self.agents:
             if agent.team_index == scoring_team:
                 rewards[agent.index] += reward
@@ -159,28 +195,38 @@ class AmericanFootballEnv(MultiGridEnv):
         agent: Agent,
         rewards: dict[int, float],
     ):
-        """
-        Pickup with ball stealing.
-
-        - Normal pickup: pick up a ball from the ground.
-        - Steal: if an opponent in front is carrying a ball, take it.
-        """
+        """Pickup with ball stealing and dual cooldown (like Soccer IndAgObs)."""
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Normal pickup from ground
+        # Normal pickup from ground (no cooldown check)
         if fwd_obj is not None and fwd_obj.can_pickup():
             if agent.state.carrying is None:
                 agent.state.carrying = fwd_obj
                 self.grid.set(*fwd_pos, None)
                 return
 
-        # Steal from another agent (only from opponents)
+        # Steal from opponent (with cooldown)
         target = self._agent_at(fwd_pos)
         if target is not None and target.state.carrying is not None:
-            if agent.state.carrying is None and target.team_index != agent.team_index:
-                agent.state.carrying = target.state.carrying
-                target.state.carrying = None
+            if agent.state.carrying is None:
+                # Check cooldown
+                if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
+                    return
+                # Only steal from opponents
+                if target.team_index != agent.team_index:
+                    agent.state.carrying = target.state.carrying
+                    target.state.carrying = None
+                    # Dual cooldown
+                    agent.action_cooldown = self.steal_cooldown
+                    target.action_cooldown = self.steal_cooldown
+                    # Track steal
+                    self.steals_completed.append({
+                        "step": self.step_count,
+                        "stealer": agent.index,
+                        "victim": target.index,
+                        "team": agent.team_index,
+                    })
 
     def _handle_drop(
         self,
@@ -188,71 +234,130 @@ class AmericanFootballEnv(MultiGridEnv):
         agent: Agent,
         rewards: dict[int, float],
     ):
-        """
-        Drop with passing (no scoring via drop in American Football).
-
-        - Pass: drop toward a teammate -> transfer ball.
-        - Ground drop: drop onto empty cell.
-        """
+        """Drop with teleport passing (like Soccer/Basketball IndAgObs)."""
         if agent.state.carrying is None:
             return
 
         fwd_pos = agent.front_pos
         fwd_obj = self.grid.get(*fwd_pos)
 
-        # Try passing to another agent (teammate only)
-        target = self._agent_at(fwd_pos)
-        if target is not None:
-            if target.state.carrying is None and target.team_index == agent.team_index:
-                target.state.carrying = agent.state.carrying
-                agent.state.carrying = None
-                return
+        # Priority 1: Teleport pass to teammate
+        teammates = [
+            a for a in self.agents
+            if a.team_index == agent.team_index
+            and a.index != agent.index
+            and a.state.carrying is None
+            and not a.state.terminated
+        ]
+        if teammates:
+            target = teammates[self.np_random.integers(len(teammates))]
+            target.state.carrying = agent.state.carrying
+            agent.state.carrying = None
+            self.passes_completed.append({
+                "step": self.step_count,
+                "passer": agent.index,
+                "receiver": target.index,
+                "team": agent.team_index,
+            })
+            return
 
-        # Drop on empty ground
+        # Priority 2: Drop on empty ground
         if fwd_obj is None and self._agent_at(fwd_pos) is None:
             self.grid.set(*fwd_pos, agent.state.carrying)
             agent.state.carrying.cur_pos = fwd_pos
             agent.state.carrying = None
 
     def step(self, actions):
-        """Override step to check for touchdowns after movement."""
+        """Step with cooldowns, touchdown detection, reward shaping, and telemetry."""
+        # Decrement cooldowns
+        for agent in self.agents:
+            if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
+                agent.action_cooldown -= 1
+
+        goals_before = len(self.goal_scored_by)
+        passes_before = len(self.passes_completed)
+        steals_before = len(self.steals_completed)
+
         obs, rewards, terminated, truncated, info = super().step(actions)
 
-        # Check for touchdowns: agent in opponent's end zone while carrying ball
+        # Check for touchdowns: agent in opponent's end zone while carrying
         for agent in self.agents:
             if agent.state.carrying is not None:
                 pos = agent.state.pos
                 pos_tuple = (int(pos[0]), int(pos[1]))
 
-                # Check if agent is in an end zone
                 if pos_tuple in self.endzone_positions:
                     endzone_team = self.endzone_positions[pos_tuple]
 
-                    # Check if it's the opponent's end zone (not own team's)
                     if endzone_team != agent.team_index:
                         # TOUCHDOWN!
                         ball = agent.state.carrying
                         ball_index = ball.index
 
-                        # Award points to the scoring team
                         reward = self.balls_reward[ball_index] if ball_index < len(self.balls_reward) else 1.0
                         self._team_reward(agent.team_index, rewards, reward)
 
-                        # Remove ball from agent
-                        agent.state.carrying = None
+                        self.goal_scored_by.append({
+                            "step": self.step_count,
+                            "scorer": agent.index,
+                            "team": agent.team_index,
+                        })
 
-                        # Respawn ball randomly on map (like Soccer)
+                        agent.state.carrying = None
                         self.place_obj(ball)
 
-                        # Track team score and check win condition (goals_to_win)
                         self.team_scores[agent.team_index] += 1
-                        
-                        # Check if team reached goals_to_win (e.g., 2 goals)
                         if self.team_scores[agent.team_index] >= self.goals_to_win:
-                            # Terminate episode for all agents
                             for a in self.agents:
                                 a.state.terminated = True
                         break
+
+        # ---- Reward shaping (SMAC-style dense rewards) ----
+        if self.reward_shaping:
+            for agent in self.agents:
+                carrying = agent.state.carrying is not None
+                curr_x = int(agent.state.pos[0])
+                prev_carrying = self._prev_carrying.get(agent.index, False)
+                prev_x = self._prev_x.get(agent.index, curr_x)
+                target_x = self._target_endzone_x(agent)
+
+                # +0.1 for picking up ball (transition to carrying)
+                if carrying and not prev_carrying:
+                    rewards[agent.index] += 0.1
+
+                # Distance shaping while carrying
+                if carrying:
+                    if target_x > prev_x:
+                        # Green scores right: positive dx = progress
+                        dx = curr_x - prev_x
+                    else:
+                        # Blue scores left: negative dx = progress
+                        dx = prev_x - curr_x
+                    rewards[agent.index] += 0.01 * dx
+
+                # Update tracking state
+                self._prev_carrying[agent.index] = carrying
+                self._prev_x[agent.index] = curr_x
+
+        # ---- Telemetry (per-agent info injection) ----
+        for agent in self.agents:
+            info[agent.index]["position"] = tuple(int(c) for c in agent.state.pos)
+            info[agent.index]["carrying"] = agent.state.carrying is not None
+
+        if len(self.goal_scored_by) > goals_before:
+            latest = self.goal_scored_by[-1]
+            for aid in info:
+                info[aid]["goal_scored_by"] = latest
+
+        if len(self.passes_completed) > passes_before:
+            latest = self.passes_completed[-1]
+            for aid in info:
+                info[aid]["pass_completed"] = latest
+
+        if len(self.steals_completed) > steals_before:
+            latest = self.steals_completed[-1]
+            for aid in info:
+                info[aid]["steal_completed"] = latest
 
         return obs, rewards, terminated, truncated, info
 
@@ -263,31 +368,27 @@ class AmericanFootballEnv(MultiGridEnv):
 
 class AmericanFootballSoloGreenEnv16x11(AmericanFootballEnv):
     """Solo Green agent (curriculum pre-training)."""
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
         super().__init__(
-            width=16,
-            height=11,
-            num_balls=1,
-            agents_index=[0],
-            balls_index=[0],
-            balls_reward=[1.0],
-            goals_to_win=2,
-            render_mode=render_mode,
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0],
+            balls_index=[0], balls_reward=[1.0],
+            goals_to_win=2, render_mode=render_mode,
+            reward_shaping=reward_shaping,
         )
 
 
 class AmericanFootballSoloBlueEnv16x11(AmericanFootballEnv):
     """Solo Blue agent (curriculum pre-training)."""
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
         super().__init__(
-            width=16,
-            height=11,
-            num_balls=1,
-            agents_index=[1],
-            balls_index=[0],
-            balls_reward=[1.0],
-            goals_to_win=2,
-            render_mode=render_mode,
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[1],
+            balls_index=[0], balls_reward=[1.0],
+            goals_to_win=2, render_mode=render_mode,
+            reward_shaping=reward_shaping,
         )
 
 
@@ -297,17 +398,15 @@ class AmericanFootballSoloBlueEnv16x11(AmericanFootballEnv):
 
 class AmericanFootball1v1Env16x11(AmericanFootballEnv):
     """1v1 American Football (Green vs Blue)."""
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
         super().__init__(
-            width=16,
-            height=11,
-            num_balls=1,
-            agents_index=[0, 1],
-            balls_index=[0],
-            balls_reward=[1.0],
-            zero_sum=True,
-            goals_to_win=2,
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=True, goals_to_win=2,
             render_mode=render_mode,
+            reward_shaping=reward_shaping,
         )
 
 
@@ -317,17 +416,15 @@ class AmericanFootball1v1Env16x11(AmericanFootballEnv):
 
 class AmericanFootball2v2Env16x11(AmericanFootballEnv):
     """2v2 American Football (2 Green vs 2 Blue)."""
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
         super().__init__(
-            width=16,
-            height=11,
-            num_balls=1,
-            agents_index=[0, 0, 1, 1],
-            balls_index=[0],
-            balls_reward=[1.0],
-            zero_sum=True,
-            goals_to_win=2,
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=True, goals_to_win=2,
             render_mode=render_mode,
+            reward_shaping=reward_shaping,
         )
 
 
@@ -337,15 +434,13 @@ class AmericanFootball2v2Env16x11(AmericanFootballEnv):
 
 class AmericanFootball3v3Env16x11(AmericanFootballEnv):
     """3v3 American Football (3 Green vs 3 Blue)."""
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
         super().__init__(
-            width=16,
-            height=11,
-            num_balls=1,
-            agents_index=[0, 0, 0, 1, 1, 1],
-            balls_index=[0],
-            balls_reward=[1.0],
-            zero_sum=True,
-            goals_to_win=2,
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=True, goals_to_win=2,
             render_mode=render_mode,
+            reward_shaping=reward_shaping,
         )

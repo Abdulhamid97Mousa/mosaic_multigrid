@@ -16,6 +16,10 @@ from .soccer_game import (
     SoccerSoloGreenIndAgObsEnv16x11,
     SoccerSoloBlueIndAgObsEnv16x11,
 )
+
+# Backward compatibility aliases (Enhanced -> IndAgObs naming)
+SoccerGameEnhancedEnv = SoccerGameIndAgObsEnv
+SoccerGame4HEnhancedEnv16x11N2 = SoccerGame4HIndAgObsEnv16x11N2
 from .collect_game import (
     CollectGameEnv,
     CollectGame3HEnv10x10N3,  # 3 agents, individual competition
@@ -26,6 +30,11 @@ from .collect_game import (
     CollectGame4HIndAgObsEnv10x10N2,  # 4 agents 2v2, IndAgObs with natural termination
     CollectGame2HIndAgObsEnv10x10N2,  # 2 agents 1v1, IndAgObs with natural termination
 )
+
+# Backward compatibility aliases (Enhanced -> IndAgObs naming)
+CollectGameEnhancedEnv = CollectGameIndAgObsEnv
+CollectGame3HEnhancedEnv10x10N3 = CollectGame3HIndAgObsEnv10x10N3
+CollectGame4HEnhancedEnv10x10N2 = CollectGame4HIndAgObsEnv10x10N2
 from .basketball_game import (
     BasketballGameEnv,
     BasketballGameIndAgObsEnv,
@@ -158,7 +167,7 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0': (BasketballSoloBlueIndAgObsEnv19x11, {}),
 
     # -----------------------------------------------------------------------
-    # American Football environments (v7.0.0) - touchdown scoring
+    # American Football environments (v6.3.0) - touchdown scoring
     #
     # 16x11 grid (same as Soccer), simplified scoring: walk INTO opponent's
     # end zone while carrying ball (no drop action needed). End zones are
@@ -172,6 +181,15 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v0': (AmericanFootball2v2TeamObsEnv, {}),
     'MosaicMultiGrid-AmericanFootball-3v3-v0': (AmericanFootball3v3Env16x11, {}),
     'MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v0': (AmericanFootball3v3TeamObsEnv, {}),
+
+    # -----------------------------------------------------------------------
+    # Backward compatibility: Enhanced -> IndAgObs aliases (v6.0+)
+    #
+    # Old "Enhanced" naming still works via these aliases
+    # -----------------------------------------------------------------------
+    'MosaicMultiGrid-Soccer-Enhanced-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
+    'MosaicMultiGrid-Collect-Enhanced-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
+    'MosaicMultiGrid-Collect-2vs2-Enhanced-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
 }
 
 # -----------------------------------------------------------------------

@@ -548,7 +548,9 @@ class ObjectGoal(WorldObj):
         return obj
 
     def can_overlap(self) -> bool:
-        return False
+        # v6.4.0: Changed to True to enable walk-in scoring.
+        # Agents must walk INTO the goal square while carrying the ball.
+        return True
 
     def render(self, img: ndarray[np.uint8]) -> None:
         c = self.color.rgb()

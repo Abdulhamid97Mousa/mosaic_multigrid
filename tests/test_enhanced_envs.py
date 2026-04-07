@@ -405,30 +405,36 @@ class TestTeleportPassing:
         assert opp2.state.carrying is None, "Opponent must never receive teleport pass"
 
     def test_scoring_takes_priority_over_teleport(self):
-        """Scoring at a goal takes priority over teleport passing."""
+        """Walk-in scoring (v6.3+): DROP doesn't score, only passes or drops.
+
+        In v6.3+, scoring happens when agent walks INTO goal square while carrying.
+        DROP action only handles teleport passing and ground drops.
+        """
         env = self._make_env()
         env.reset(seed=42)
 
-        agent = env.agents[0]  # Team 1
+        agent = env.agents[0]  # Team 1 (Green)
         teammate = env.agents[1]
 
-        # Position agent facing goal at (6,3) — team 2's goal (team 1 scores here)
-        agent.state.pos = (5, 3)
-        agent.state.dir = 0  # Facing right toward goal
+        # Position agent adjacent to goal, then walk in
+        # Team 2's goal is at (6, 3) in this 8x8 env - Green scores here
+        agent.state.pos = np.array([5, 3])
+        agent.state.dir = 0  # facing right -> walks into (6, 3)
         agent.state.carrying = Ball(color=Color.red, index=0)
 
-        teammate.state.pos = (3, 3)
+        teammate.state.pos = np.array([3, 3])
         teammate.state.carrying = None
 
-        env.agents[2].state.pos = (2, 5)
-        env.agents[3].state.pos = (2, 6)
+        env.agents[2].state.pos = np.array([2, 5])
+        env.agents[3].state.pos = np.array([2, 6])
 
-        env.step({0: Action.drop, 1: Action.done, 2: Action.done, 3: Action.done})
+        # Forward action walks agent into goal square, triggering walk-in scoring
+        env.step({0: Action.forward, 1: Action.done, 2: Action.done, 3: Action.done})
 
-        # Priority 1 (scoring) should fire, NOT priority 2 (teleport)
+        # Walk-in scoring should have triggered
         assert agent.state.carrying is None, "Ball should have been used to score"
         assert teammate.state.carrying is None, "Teammate should NOT receive pass when scoring"
-        assert env.team_scores[2] == 1, "Goal should have been scored at team 2's goal"
+        assert env.team_scores[1] == 1, "Goal should have been scored by team 1 (Green)"
 
     def test_teleport_pass_is_reproducible(self):
         """Teleport pass uses seeded RNG — same seed = same result."""

@@ -247,8 +247,8 @@ class TestRewardSignCorrectness:
             f"Green (scoring team) should get positive reward, got {green_total}. "
             f"Rewards: {rewards}"
         )
-        assert blue_total == 0, (
-            f"Blue (conceding team) should get 0 reward, got {blue_total}. "
+        assert blue_total < 1.0, (
+            f"Blue (conceding team) should NOT get goal reward, got {blue_total}. "
             f"Rewards: {rewards}"
         )
         env.close()
@@ -280,8 +280,8 @@ class TestRewardSignCorrectness:
             f"Blue (scoring team) should get positive reward, got {blue_total}. "
             f"Rewards: {rewards}"
         )
-        assert green_total == 0, (
-            f"Green (conceding team) should get 0 reward, got {green_total}. "
+        assert green_total < 1.0, (
+            f"Green (conceding team) should NOT get goal reward, got {green_total}. "
             f"Rewards: {rewards}"
         )
         env.close()
@@ -304,9 +304,9 @@ class TestRewardSignCorrectness:
                    3: Action.done, 4: Action.done, 5: Action.done}
         _, rewards, _, _, _ = env.step(actions)
 
-        total = sum(rewards.values())
-        assert total == 0, (
-            f"Own-goal should give zero reward, got total={total}. "
+        # No goal reward should be given (shaped rewards may be non-zero)
+        assert all(r < 1.0 for r in rewards.values()), (
+            f"Own-goal should NOT give goal reward (+1.0), got "
             f"Rewards: {rewards}"
         )
         env.close()
@@ -330,7 +330,7 @@ class TestBasketballEventTracking:
         env.close()
 
     def test_goal_tracking_records_scorer(self):
-        """After a goal, goal_scored_by should contain the scorer's info."""
+        """After a walk-in goal, goal_scored_by should contain the scorer's info."""
         from mosaic_multigrid.core.actions import Action
         from mosaic_multigrid.core.world_object import Ball
 
@@ -341,9 +341,9 @@ class TestBasketballEventTracking:
         ball = Ball(color='red', index=0)
         agent.state.carrying = ball
         agent.state.pos = (16, 5)
-        agent.state.dir = 0
+        agent.state.dir = 0  # facing right -> walks into (17, 5) = Blue goal
 
-        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+        actions = {0: Action.forward, 1: Action.done, 2: Action.done,
                    3: Action.done, 4: Action.done, 5: Action.done}
         env.step(actions)
 
@@ -355,7 +355,7 @@ class TestBasketballEventTracking:
         env.close()
 
     def test_goal_in_info_dict(self):
-        """Info dict should contain goal_scored_by on scoring steps."""
+        """Info dict should contain goal_scored_by on walk-in scoring steps."""
         from mosaic_multigrid.core.actions import Action
         from mosaic_multigrid.core.world_object import Ball
 
@@ -366,9 +366,9 @@ class TestBasketballEventTracking:
         ball = Ball(color='red', index=0)
         agent.state.carrying = ball
         agent.state.pos = (16, 5)
-        agent.state.dir = 0
+        agent.state.dir = 0  # facing right -> walks into (17, 5) = Blue goal
 
-        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+        actions = {0: Action.forward, 1: Action.done, 2: Action.done,
                    3: Action.done, 4: Action.done, 5: Action.done}
         _, _, _, _, infos = env.step(actions)
 
@@ -450,7 +450,7 @@ class TestBasketballEventTracking:
         agent.state.pos = (16, 5)
         agent.state.dir = 0
 
-        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+        actions = {0: Action.forward, 1: Action.done, 2: Action.done,
                    3: Action.done, 4: Action.done, 5: Action.done}
         env.step(actions)
         assert len(env.goal_scored_by) >= 1

@@ -200,7 +200,7 @@ class TestWorldObj:
         assert Floor().can_overlap()
         assert Lava().can_overlap()
         assert not Wall().can_overlap()
-        assert not ObjectGoal().can_overlap()
+        assert ObjectGoal().can_overlap()  # v6.4.0: True for walk-in scoring
 
 
 # ---------------------------------------------------------------

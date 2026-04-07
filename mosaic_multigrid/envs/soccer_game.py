@@ -291,6 +291,7 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         max_steps: int = 10000,
         goals_to_win: int = 2,
         steal_cooldown: int = 10,
+        reward_shaping: bool = True,
     ):
         """
         Parameters
@@ -299,6 +300,10 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             First team to score this many goals wins (default: 2).
         steal_cooldown : int
             Steps both stealer and victim wait after steal (default: 10).
+        reward_shaping : bool
+            If True (default), add dense intermediate rewards:
+            +0.1 for pickup, +/-0.01 per step toward/away from goal.
+            Set False for sparse evaluation (goal-only rewards).
         """
         super().__init__(
             size=size,
@@ -316,30 +321,41 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         )
         self.goals_to_win = goals_to_win
         self.steal_cooldown = steal_cooldown
+        self.reward_shaping = reward_shaping
         self.team_scores: dict[int, int] = {}
         self.goal_scored_by: list[dict] = []
         self.passes_completed: list[dict] = []
         self.steals_completed: list[dict] = []
+        self._prev_carrying: dict[int, bool] = {}
+        self._prev_pos: dict[int, tuple[int, int]] = {}
 
     def get_full_render(self, highlight: bool, tile_size: int):
         """Override to use FIFA-style rendering instead of default grid tiles."""
         return render_fifa(self, tile_size)
 
+    def _target_goal_pos(self, agent) -> list[int]:
+        """Return the (x, y) goal position where this agent scores."""
+        for gpos, gidx in zip(self.goal_pos, self.goal_index):
+            if gidx != agent.team_index:
+                return gpos
+        return self.goal_pos[0]
+
     def reset(self, **kwargs):
-        """Reset with team score and cooldown tracking."""
-        # Call parent reset first
+        """Reset with team score, cooldown, and reward shaping tracking."""
         obs, info = super().reset(**kwargs)
 
-        # Initialize team scores (one entry per unique team index)
         unique_teams = set(agent.team_index for agent in self.agents)
         self.team_scores = {team: 0 for team in unique_teams}
         self.goal_scored_by = []
         self.passes_completed = []
         self.steals_completed = []
 
-        # Initialize action cooldowns for all agents
         for agent in self.agents:
             agent.action_cooldown = 0
+
+        for agent in self.agents:
+            self._prev_carrying[agent.index] = agent.state.carrying is not None
+            self._prev_pos[agent.index] = (int(agent.state.pos[0]), int(agent.state.pos[1]))
 
         return obs, info
 
@@ -393,24 +409,41 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                                     a.state.terminated = True
                             break
 
-        # Inject per-agent position and carrying status for telemetry
+        # ---- Reward shaping (SMAC-style dense rewards) ----
+        if self.reward_shaping:
+            for agent in self.agents:
+                carrying = agent.state.carrying is not None
+                cx, cy = int(agent.state.pos[0]), int(agent.state.pos[1])
+                prev_carrying = self._prev_carrying.get(agent.index, False)
+                px, py = self._prev_pos.get(agent.index, (cx, cy))
+                gx, gy = self._target_goal_pos(agent)
+
+                if carrying and not prev_carrying:
+                    rewards[agent.index] += 0.1
+
+                if carrying:
+                    prev_dist = abs(px - gx) + abs(py - gy)
+                    curr_dist = abs(cx - gx) + abs(cy - gy)
+                    rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
+
+                self._prev_carrying[agent.index] = carrying
+                self._prev_pos[agent.index] = (cx, cy)
+
+        # ---- Telemetry ----
         for agent in self.agents:
             infos[agent.index]["position"] = tuple(int(c) for c in agent.state.pos)
             infos[agent.index]["carrying"] = agent.state.carrying is not None
 
-        # Inject goal event into info dict when a goal was scored this step
         if len(self.goal_scored_by) > goals_before:
             latest_goal = self.goal_scored_by[-1]
             for agent_id in infos:
                 infos[agent_id]["goal_scored_by"] = latest_goal
 
-        # Inject pass event into info dict when a pass was completed this step
         if len(self.passes_completed) > passes_before:
             latest_pass = self.passes_completed[-1]
             for agent_id in infos:
                 infos[agent_id]["pass_completed"] = latest_pass
 
-        # Inject steal event into info dict when a steal occurred this step
         if len(self.steals_completed) > steals_before:
             latest_steal = self.steals_completed[-1]
             for agent_id in infos:

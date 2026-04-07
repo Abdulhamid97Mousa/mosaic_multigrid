@@ -183,11 +183,11 @@ class TestTouchdownScoring:
         actions = {0: 3, 1: 0}  # agent0 forward, agent1 no-op
         obs, rewards, terminated, truncated, info = env_1v1.step(actions)
 
-        # Check that agent0 scored
+            # Check that agent0 scored (v6.3.0: game continues until goals_to_win reached)
         assert rewards[0] > 0, "Agent 0 should receive positive reward for touchdown"
         assert rewards[1] < 0, "Agent 1 should receive negative reward (zero-sum)"
-        assert terminated[0] is True, "Game should terminate after touchdown"
         assert agent0.state.carrying is None, "Ball should be removed from agent after touchdown"
+        # Note: Game continues until goals_to_win (default 2) is reached
 
     def test_agent_cannot_score_in_own_endzone(self, env_1v1):
         """Test that agent CANNOT score in their own end zone."""
@@ -221,9 +221,9 @@ class TestTouchdownScoring:
         actions = {0: 3, 1: 0}  # agent0 forward, agent1 no-op
         obs, rewards, terminated, truncated, info = env_1v1.step(actions)
 
-        # Check that NO touchdown occurred
-        assert rewards[0] == 0, "Agent 0 should NOT score in own end zone"
-        assert rewards[1] == 0, "Agent 1 should NOT receive any reward"
+        # Check that NO touchdown occurred (shaped rewards may be non-zero)
+        assert rewards[0] < 1.0, "Agent 0 should NOT score touchdown in own end zone"
+        assert rewards[1] <= 0, "Agent 1 should NOT receive touchdown reward"
         assert not terminated[0], "Game should NOT terminate"
         assert agent0.state.carrying is not None, "Agent should still be carrying ball"
 
@@ -259,11 +259,11 @@ class TestTouchdownScoring:
         actions = {0: 0, 1: 3}  # agent0 no-op, agent1 forward
         obs, rewards, terminated, truncated, info = env_1v1.step(actions)
 
-        # Check that agent1 scored
+        # Check that agent1 scored (v6.3.0: game continues until goals_to_win reached)
         assert rewards[1] > 0, "Agent 1 should receive positive reward for touchdown"
         assert rewards[0] < 0, "Agent 0 should receive negative reward (zero-sum)"
-        assert terminated[1] is True, "Game should terminate after touchdown"
         assert agent1.state.carrying is None, "Ball should be removed from agent after touchdown"
+        # Note: Game continues until goals_to_win (default 2) is reached
 
 
 class TestBallStealing:
