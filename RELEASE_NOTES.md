@@ -4,6 +4,141 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [6.5.0] - 2026-04-16
+
+### Overview
+
+This release fixes the reward signal across all three sport environments so that
+MAPPO/IPPO agents can actually learn to score. The previous rewards (+1.0 scoring,
+no timeout pressure, no proximity signal) were too weak for the sparse-reward
+landscape on these grids. v6.5.0 recalibrates all reward components based on
+empirical training results with MAPPO.
+
+**Training validation (MAPPO, 1M steps, 8 parallel envs):**
+- American Football 2v2: entropy 1.76→1.09, episodes end in avg 80 steps (vs 300 timeout) ✓
+- Soccer 2v2: entropy 1.71→1.30, goal discovered at step ~480k, episodes < 300 steps ✓
+- Basketball 3v3: ongoing (3M-step run with `n_epochs=5`, `lr=3e-4`)
+
+### Breaking Changes
+
+#### Scoring reward: +1.0 → +15.0 (all sport environments)
+
+The previous +1.0 scoring reward was dominated by the `ent_coef=0.01` entropy
+bonus in MAPPO (which contributed ~0.01 × 2.08 ≈ 0.02 per step × 300 steps =
+~6 in entropy value). Raising to +15.0 makes the scoring signal unambiguously
+the dominant learning gradient.
+
+Affected classes: `SoccerGameIndAgObsEnv`, `BasketballGameIndAgObsEnv`,
+`AmericanFootballEnv` (all walk-in scoring paths).
+
+#### max_steps: 200 → 300 (Soccer and Basketball)
+
+All soccer and basketball IndAgObs RL environments now default to 300 steps
+instead of 200. This matches the American Football default set in v6.4.0 and
+ensures the MAPPO buffer constraint `buffer_size = parallels × max_steps` can
+be set consistently to 2400 (8 × 300) across all three sports.
+
+Affected classes:
+- `SoccerGame4HIndAgObsEnv16x11N2` (2v2)
+- `SoccerGame2HIndAgObsEnv16x11N2` (1v1)
+- `BasketballGame6HIndAgObsEnv19x11N3` (3v3)
+
+### New Features
+
+#### Ball provenance tracking (`_ball_last_carrier_team`)
+
+Blocks the same-team pickup farming exploit where agents chain
+`PICKUP → DROP → PICKUP → DROP` repeatedly to accumulate +0.1 pickup rewards
+without ever advancing toward the goal. Now the `+0.1` pickup reward is only
+awarded when the ball's previous carrier was from the **opposing** team (or
+nobody), not the agent's own team.
+
+```python
+# In BasketballGameIndAgObsEnv / SoccerGameIndAgObsEnv step():
+if carrying and not prev_carrying:
+    last_team = self._ball_last_carrier_team.get(ball_idx)
+    if last_team is None or last_team != agent.team_index:
+        rewards[agent.index] += 0.1   # only genuine first possession
+```
+
+#### Pass-chain counter (`_ball_pass_count`)
+
+Penalizes A→B→A bounce passes that farm the first-pass +0.1 reward without
+tactical purpose. The counter resets on: ground drop, steal, goal, episode reset.
+
+| Pass number | Reward | Rationale |
+|-------------|--------|-----------|
+| 1st pass | +0.1 | Reward genuine teamwork |
+| 2nd consecutive pass | -0.2 | Penalise A→B→A bounce |
+| 3rd+ pass | 0 | Silent — prevents stacking negative signals |
+
+#### Timeout penalty: −1.0 (all sport environments)
+
+Episodes that reach `max_steps` without a winner now apply a −1.0 penalty to
+all agents. This creates the pressure that prevents agents from learning to stall.
+
+#### Proximity reward: +0.01/step within Manhattan distance 3 of ball
+
+When an agent is not carrying the ball and is within Manhattan distance 3 of
+any ball on the grid (or any agent carrying the ball), it receives +0.01 per
+step. This is the critical "missing rung" in the reward ladder that allows
+random-walk exploration to discover the ball before the first pickup event.
+
+```python
+# Reward ladder (from random walk to scoring):
+# +0.01/step near ball  → +0.1 on pickup → +0.05/step toward goal → +15.0 score
+```
+
+Currently implemented in `BasketballGameIndAgObsEnv`. Pending: Soccer, American Football.
+
+### Configuration Changes
+
+The following MAPPO training hyperparameters were updated based on empirical
+training results and the FXP paper (Feng et al., 2023) recommendations for
+symmetric zero-sum multi-agent games:
+
+| Parameter | Old | New | Reason |
+|-----------|-----|-----|--------|
+| `use_parameter_sharing` | False | **True** | FXP: shared policy eliminates local NE traps in symmetric games |
+| `buffer_size` | 200 | **2400** | 8 × 300 = one full episode per env per update (GAE requires complete episodes) |
+| `n_minibatch` | 1 | **4** | Prevents trivial critic collapse on small minibatches |
+| `ent_coef` | 0.05 | **0.01** | FXP paper gridworld recommendation (0.05 kept policy random) |
+| `n_epochs` | 10 | **5** (basketball) | Fewer passes per buffer reduces critic non-stationarity with 6 agents |
+| `learning_rate` | 0.0007 | **0.0003** (basketball) | Dampens oscillation from 6-agent joint policy updates |
+
+### Bug Fixes
+
+- **`use_global_state`**: Set to `True` in 1v1 MAPPO configs (was `False`).
+  The MAPPO centralized critic should see both agents' observations for proper
+  credit assignment in competitive play.
+- **Soccer/Basketball 1v1 network size**: Corrected `representation_hidden_size`
+  from `[64, 64]` to `[128, 128]` to match the `(7,7,3)=147` flattened observation
+  when `MOSAIC_VIEW_SIZE=7`.
+
+### New Training Scripts
+
+Direct-launch v6_5 scripts added for all variants:
+
+| Script | Environment |
+|--------|-------------|
+| `mappo_american_football_1v1_v6_5.sh` | AF 1v1 competitive |
+| `mappo_soccer_1vs1_v6_5.sh` | Soccer 1v1 competitive |
+| `mappo_american_football_solo_green_v6_5.sh` | AF Solo Green (curriculum) |
+| `mappo_american_football_solo_blue_v6_5.sh` | AF Solo Blue (curriculum) |
+
+All scripts follow the same pattern as the existing 2v2/3v3 v6_5 scripts:
+no MOSAIC GUI required, pre-flight check for v6.5.0 source, direct background
+launch with stdout/stderr logging.
+
+### Backward Compatibility
+
+- Environment Gymnasium IDs unchanged
+- `reward_shaping=False` still produces sparse goal-only rewards
+- `max_steps` can be overridden at `gym.make()` time
+- Observation shapes unchanged
+
+---
+
 ## [6.4.0] - 2026-04-08
 
 ### New Features

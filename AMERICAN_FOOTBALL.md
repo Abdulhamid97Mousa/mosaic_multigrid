@@ -33,31 +33,80 @@ Row 10: [wall wall wall ...     wall wall]
 | **Goals to win** | 2 (default) | 2 (default) | 2 (default) |
 | **Ball respawn** | Random midfield position | Random position | Random position |
 
-## Reward Shaping (v6.4.0)
+## Reward Shaping (v6.5.0)
 
 American Football includes SMAC-style dense reward shaping, enabled by default.
-This follows the pattern from Samvelyan et al. (2019) where intermediate signals
-guide learning in sparse-reward environments.
+The reward structure is a continuous ladder: each rung is reachable from the
+one below without requiring luck.
+
+```
++0.01/step near ball  →  +0.1 on pickup  →  +0.05/step toward end zone  →  +15.0 on touchdown
+(always reachable)        (rare but reachable)  (follows naturally)            (follows naturally)
+```
 
 ### Reward Components
 
 | Event | Reward | When |
 |-------|--------|------|
-| **Pickup ball** | +0.1 | Agent transitions from not-carrying to carrying |
-| **Move toward end zone** | +0.01 per column | While carrying, each column closer to target |
-| **Move away from end zone** | -0.01 per column | While carrying, each column farther from target |
-| **Touchdown** | +1.0 | Walk into opponent's end zone while carrying |
-| **Opponent touchdown** | -1.0 | Only when `zero_sum=True` (competitive variants) |
+| **Near ball (proximity)** | +0.01 / step | Agent within Manhattan dist ≤ 3 of ball, not carrying |
+| **Pickup ball** | +0.1 | Agent picks up ball; only if last carrier was opponent or nobody (provenance check) |
+| **Move toward end zone** | +0.05 × Δcol | While carrying, each column closer to target end zone |
+| **Move away from end zone** | −0.05 × Δcol | While carrying, each column farther from target |
+| **First pass to teammate** | +0.1 | First teleport pass per possession chain |
+| **Second consecutive pass (A→B→A)** | −0.2 | Penalises bounce passing that farms the pass reward |
+| **Touchdown** | +15.0 | Walk into opponent's end zone while carrying |
+| **Opponent touchdown** | −15.0 | When `zero_sum=True` (all competitive variants) |
+| **Timeout (no winner)** | −1.0 (all agents) | Applied when `max_steps` reached with no winner |
 
-### Why Reward Shaping?
+### Why Each Layer Exists
 
-Without shaping, agents receive reward **only** on touchdowns. On a 16x11 grid
-with `view_size=3` (7% field coverage), a random agent scores ~0.6% of the time.
-The gradient signal is too weak for standard RL algorithms (PPO, MAPPO, IPPO).
+**Layer 1 — Ball provenance (`_ball_last_carrier_team`)**
 
-With shaping, agents get useful feedback from the first episode where they
-accidentally pick up the ball. In testing, PPO reached 56% touchdown rate
-within 150 iterations with shaping vs 0.8% without.
+Blocks the same-team pickup-farming exploit where agents chain
+`PICKUP → DROP → PICKUP → DROP` to accumulate +0.1 per cycle in place.
+The +0.1 pickup bonus is only paid when the ball last belonged to the
+opposing team (or nobody). Implemented via `_ball_last_carrier_team` dict
+mapping `ball_index → last_carrier_team_index`.
+
+**Layer 2 — Timeout penalty (−1.0)**
+
+Without a timeout penalty, "do nothing" is a safe Nash equilibrium — nobody
+scores, nobody loses. The −1.0 penalty makes stalling actively bad.
+
+**Layer 3 — Touchdown reward (+15.0) and `zero_sum=True`**
+
+At +1.0, the scoring signal was numerically dominated by the PPO entropy bonus.
+At +15.0, one touchdown is worth 300 proximity-reward steps — the unambiguous
+dominant objective. `zero_sum=True` means the opposing team receives −15.0.
+
+**Layer 4 — Distance shaping (×0.05) and pass-chain cap**
+
+Raised from ×0.01 to ×0.05 so the gradient toward the end zone overcomes
+random-walk noise. The pass-chain cap (−0.2 on second consecutive pass)
+prevents A→B→A teleport-bounce farming.
+
+### Own-Touchdown-Zone Prevention
+
+Agents **cannot score in their own end zone**. The scoring check in `step()`
+includes an explicit guard comparing the goal's team index to the agent's team:
+
+```python
+# In AmericanFootballEnv.step():
+if end_zone.team_index != agent.team_index:
+    # Only opponent's end zone counts — own end zone is inert
+    self._team_reward(agent.team_index, rewards, 15.0)
+```
+
+Green agents (team_index=0) can only score in the Blue end zone (column 14),
+and Blue agents (team_index=1) can only score in the Green end zone (column 1).
+
+### Training Results (MAPPO 2v2, 1M steps, v6.5.0)
+
+AF 2v2 is the best-performing environment across all three sports:
+- Entropy: 1.76 → **1.09** (clear policy commitment)
+- Episodes ending in avg **80 steps** (vs 300-step timeout)
+- Scoring discovered at ~step 100k — earliest of all three sports
+- Critic loss stable at ~0.3 (no oscillation)
 
 ### Disabling Reward Shaping
 
@@ -103,23 +152,23 @@ When an agent uses the drop action while carrying:
 
 | Environment ID | Agents | Purpose |
 |----------------|--------|---------|
-| `MosaicMultiGrid-AmericanFootball-Solo-Green-v0` | 1 (Green) | Learn scoring chain without opponent |
-| `MosaicMultiGrid-AmericanFootball-Solo-Blue-v0` | 1 (Blue) | Learn scoring chain without opponent |
+| `MosaicMultiGrid-AmericanFootball-Solo-Green-IndAgObs-v1` | 1 (Green) | Learn scoring chain without opponent |
+| `MosaicMultiGrid-AmericanFootball-Solo-Blue-IndAgObs-v1` | 1 (Blue) | Learn scoring chain without opponent |
 
 ### Competitive
 
 | Environment ID | Agents | Teams | Zero-Sum |
 |----------------|--------|-------|----------|
-| `MosaicMultiGrid-AmericanFootball-1v1-v0` | 2 | 1v1 | Yes |
-| `MosaicMultiGrid-AmericanFootball-2v2-v0` | 4 | 2v2 | Yes |
-| `MosaicMultiGrid-AmericanFootball-3v3-v0` | 6 | 3v3 | Yes |
+| `MosaicMultiGrid-AmericanFootball-1v1-IndAgObs-v1` | 2 | 1v1 | Yes |
+| `MosaicMultiGrid-AmericanFootball-2v2-IndAgObs-v1` | 4 | 2v2 | Yes |
+| `MosaicMultiGrid-AmericanFootball-3v3-IndAgObs-v1` | 6 | 3v3 | Yes |
 
 ### TeamObs (SMAC-style teammate awareness)
 
 | Environment ID | Agents | Extra Obs |
 |----------------|--------|-----------|
-| `MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v0` | 4 | teammate positions, directions, has_ball |
-| `MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v0` | 6 | teammate positions, directions, has_ball |
+| `MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v1` | 4 | teammate positions, directions, has_ball |
+| `MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v1` | 6 | teammate positions, directions, has_ball |
 
 ### Configurable View Size
 

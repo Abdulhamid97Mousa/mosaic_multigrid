@@ -55,6 +55,7 @@ class CollectGameEnv(MultiGridEnv):
         zero_sum: bool = False,
         render_mode: str | None = None,
         max_steps: int = 10000,
+        global_obs: bool = False,
     ):
         self.num_balls = num_balls or []
         self.balls_index = balls_index or []
@@ -92,6 +93,7 @@ class CollectGameEnv(MultiGridEnv):
             see_through_walls=False,
             agent_view_size=view_size,
             render_mode=render_mode,
+            global_obs=global_obs,
         )
 
     # ------------------------------------------------------------------

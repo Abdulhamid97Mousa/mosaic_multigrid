@@ -103,6 +103,7 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
         highlight: bool = True,
         tile_size: int = TILE_PIXELS,
         agent_pov: bool = False,
+        global_obs: bool = False,
     ):
         """
         Parameters
@@ -141,6 +142,23 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
             Tile size in pixels.
         agent_pov : bool
             Whether to render agent's POV instead of full environment.
+        global_obs : bool
+            If ``True``, add a ``'global_rgb'`` key to every agent's
+            observation dict containing a top-down RGB render of the
+            entire grid (same image for all agents, O(1) render cost).
+            Default ``False`` — no overhead when not needed.
+            Enable for debugging, visualization, or centralised critics
+            that consume the full state image:
+
+            .. code-block:: python
+
+                env = gym.make(
+                    'MosaicMultiGrid-Soccer-2v2-IndAgObs-v1',
+                    global_obs=True,
+                )
+                obs, _ = env.reset()
+                obs[0]['image']       # (3, 3, 3) — partial agent view
+                obs[0]['global_rgb']  # (352, 512, 3) — full field RGB
         """
         gym.Env.__init__(self)
         RandomMixin.__init__(self, self.np_random)
@@ -207,6 +225,7 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
         self.joint_reward = joint_reward
         self.success_termination_mode = success_termination_mode
         self.failure_termination_mode = failure_termination_mode
+        self.global_obs = global_obs
 
     # ------------------------------------------------------------------
     # Spaces
@@ -214,10 +233,31 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
 
     @property
     def observation_space(self) -> spaces.Dict:
-        """Joint observation space of all agents."""
-        return spaces.Dict({
+        """Joint observation space of all agents.
+
+        When ``self.global_obs=True`` each agent's space gains an extra
+        ``'global_rgb'`` key: a uint8 Box of shape
+        ``(width × tile_size, height × tile_size, 3)``.
+        """
+        agent_spaces = {
             agent.index: agent.observation_space
             for agent in self.agents
+        }
+        if not self.global_obs:
+            return spaces.Dict(agent_spaces)
+
+        global_rgb_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(self.width * self.tile_size, self.height * self.tile_size, 3),
+            dtype=np.uint8,
+        )
+        return spaces.Dict({
+            agent_id: spaces.Dict({
+                **agent_space.spaces,
+                'global_rgb': global_rgb_space,
+            })
+            for agent_id, agent_space in agent_spaces.items()
         })
 
     @property
@@ -356,6 +396,10 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
         """
         Generate partially-observable observations for each agent.
 
+        When ``self.global_obs=True``, each agent's dict also contains
+        ``'global_rgb'``: a top-down RGB render of the full grid shared
+        across all agents (generated once per step, O(1) cost).
+
         Returns
         -------
         observations : dict[AgentID, ObsType]
@@ -376,6 +420,14 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
                 'direction': direction[i],
                 'mission': self.agents[i].mission,
             }
+
+        if self.global_obs:
+            # One render shared by all agents — sport-specific renderer
+            # (render_fifa / render_basketball / render_football) is used
+            # automatically via the subclass override of get_full_render().
+            global_rgb = self.get_frame(highlight=False, tile_size=self.tile_size)
+            for i in observations:
+                observations[i]['global_rgb'] = global_rgb
 
         return observations
 
@@ -781,47 +833,47 @@ class MultiGridEnv(gym.Env, RandomMixin, ABC):
         Parameters
         ----------
         highlight : bool
-            Whether to highlight agents' fields of view.
+            Whether to highlight agents' fields of view.  When ``False``,
+            ``gen_obs()`` is **not** called (faster, and safe to call from
+            within ``gen_obs()`` when ``global_obs=True``).
         tile_size : int
             Tile size in pixels.
         """
-        # Compute agent visibility masks
-        obs_shape = self.agents[0].observation_space['image'].shape[:-1]
-        vis_masks = np.zeros((self.num_agents, *obs_shape), dtype=bool)
-        for i, agent_obs in self.gen_obs().items():
-            vis_masks[i] = (
-                agent_obs['image'][..., 0] != Type.unseen.to_index())
+        highlight_mask = None
 
-        # Build highlight mask
-        highlight_mask = np.zeros((self.width, self.height), dtype=bool)
+        if highlight:
+            # Compute agent visibility masks only when highlight is needed
+            obs_shape = self.agents[0].observation_space['image'].shape[:-1]
+            vis_masks = np.zeros((self.num_agents, *obs_shape), dtype=bool)
+            for i, agent_obs in self.gen_obs().items():
+                vis_masks[i] = (
+                    agent_obs['image'][..., 0] != Type.unseen.to_index())
 
-        for agent in self.agents:
-            f_vec = agent.state.dir.to_vec()
-            r_vec = np.array((-f_vec[1], f_vec[0]))
-            top_left = (
-                agent.state.pos
-                + f_vec * (agent.view_size - 1)
-                - r_vec * (agent.view_size // 2)
-            )
-
-            for vis_j in range(agent.view_size):
-                for vis_i in range(agent.view_size):
-                    if not vis_masks[agent.index][vis_i, vis_j]:
-                        continue
-
-                    abs_i, abs_j = top_left - (f_vec * vis_j) + (r_vec * vis_i)
-
-                    if abs_i < 0 or abs_i >= self.width:
-                        continue
-                    if abs_j < 0 or abs_j >= self.height:
-                        continue
-
-                    highlight_mask[int(abs_i), int(abs_j)] = True
+            highlight_mask = np.zeros((self.width, self.height), dtype=bool)
+            for agent in self.agents:
+                f_vec = agent.state.dir.to_vec()
+                r_vec = np.array((-f_vec[1], f_vec[0]))
+                top_left = (
+                    agent.state.pos
+                    + f_vec * (agent.view_size - 1)
+                    - r_vec * (agent.view_size // 2)
+                )
+                for vis_j in range(agent.view_size):
+                    for vis_i in range(agent.view_size):
+                        if not vis_masks[agent.index][vis_i, vis_j]:
+                            continue
+                        abs_i, abs_j = (
+                            top_left - (f_vec * vis_j) + (r_vec * vis_i))
+                        if abs_i < 0 or abs_i >= self.width:
+                            continue
+                        if abs_j < 0 or abs_j >= self.height:
+                            continue
+                        highlight_mask[int(abs_i), int(abs_j)] = True
 
         return self.grid.render(
             tile_size,
             agents=self.agents,
-            highlight_mask=highlight_mask if highlight else None,
+            highlight_mask=highlight_mask,
         )
 
     def get_frame(

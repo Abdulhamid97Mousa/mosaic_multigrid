@@ -1,83 +1,76 @@
-"""MOSAIC multigrid environments -- registration and exports.
+"""MOSAIC multigrid environments — registration and exports.
 
-All environments are registered with Gymnasium and can be created via
-``gymnasium.make('MosaicMultiGrid-Soccer-v0')``, etc.
+All environments are registered with Gymnasium. Create via:
+
+    gymnasium.make('MosaicMultiGrid-Soccer-2v2-IndAgObs-v1')
+    gymnasium.make('MosaicMultiGrid-AmericanFootball-2v2-IndAgObs-v1')
+    gymnasium.make('MosaicMultiGrid-Basketball-3v3-IndAgObs-v1')
+
+Naming scheme (v6.5.0+):
+    MosaicMultiGrid-<Sport>-<Format>-<ObsVariant>-v1
+      Sport:      Soccer | Basketball | AmericanFootball | Collect
+      Format:     1v1 | 2v2 | 3v3 | Solo-Green | Solo-Blue
+      ObsVariant: IndAgObs (always explicit) | TeamObs
+
+v6.5.0 defaults applied to all environments:
+    scoring reward  +15.0       (was +1.0 in v6.4.0)
+    max_steps       300         (was 200 in v6.4.0)
+    zero_sum        True        opponent team receives −15.0 on score
+    timeout_penalty −1.0        applied when max_steps reached without winner
+    ball provenance tracking    blocks same-team pickup-farming
+    pass-chain cap              −0.2 on A→B→A bounce pass
+    proximity reward            +0.01/step within Manhattan dist 3 of ball
 """
 from __future__ import annotations
 
 import gymnasium as gym
 
 from .soccer_game import (
-    SoccerGameEnv,
-    SoccerGame4HEnv10x15N2,
-    SoccerGameIndAgObsEnv,
     SoccerGame4HIndAgObsEnv16x11N2,
     SoccerGame2HIndAgObsEnv16x11N2,
     SoccerSoloGreenIndAgObsEnv16x11,
     SoccerSoloBlueIndAgObsEnv16x11,
 )
-
-# Backward compatibility aliases (Enhanced -> IndAgObs naming)
-SoccerGameEnhancedEnv = SoccerGameIndAgObsEnv
-SoccerGame4HEnhancedEnv16x11N2 = SoccerGame4HIndAgObsEnv16x11N2
 from .collect_game import (
-    CollectGameEnv,
-    CollectGame3HEnv10x10N3,  # 3 agents, individual competition
-    CollectGame4HEnv10x10N2,  # 4 agents, 2v2 teams
-    CollectGame2HEnv10x10N2,  # 2 agents, 1v1 teams
-    CollectGameIndAgObsEnv,
-    CollectGame3HIndAgObsEnv10x10N3,  # 3 agents, IndAgObs with natural termination
-    CollectGame4HIndAgObsEnv10x10N2,  # 4 agents 2v2, IndAgObs with natural termination
-    CollectGame2HIndAgObsEnv10x10N2,  # 2 agents 1v1, IndAgObs with natural termination
+    CollectGame3HIndAgObsEnv10x10N3,
+    CollectGame4HIndAgObsEnv10x10N2,
+    CollectGame2HIndAgObsEnv10x10N2,
 )
-
-# Backward compatibility aliases (Enhanced -> IndAgObs naming)
-CollectGameEnhancedEnv = CollectGameIndAgObsEnv
-CollectGame3HEnhancedEnv10x10N3 = CollectGame3HIndAgObsEnv10x10N3
-CollectGame4HEnhancedEnv10x10N2 = CollectGame4HIndAgObsEnv10x10N2
 from .basketball_game import (
-    BasketballGameEnv,
-    BasketballGameIndAgObsEnv,
     BasketballGame6HIndAgObsEnv19x11N3,
     BasketballSoloGreenIndAgObsEnv19x11,
     BasketballSoloBlueIndAgObsEnv19x11,
 )
 from .american_football_game import (
-    AmericanFootballEnv,
     AmericanFootballSoloGreenEnv16x11,
     AmericanFootballSoloBlueEnv16x11,
     AmericanFootball1v1Env16x11,
     AmericanFootball2v2Env16x11,
     AmericanFootball3v3Env16x11,
 )
-from ..wrappers import TeamObsWrapper
+from ..wrappers import TeamObsWrapper, GlobalObsWrapper
 
 
 # -----------------------------------------------------------------------
-# TeamObs environment classes (SMAC-style teammate awareness)
+# TeamObs environment classes — SMAC-style teammate awareness
 #
-# These thin wrappers compose IndAgObs base envs with TeamObsWrapper,
+# Thin wrappers that compose an IndAgObs base env with TeamObsWrapper,
 # adding structured teammate features (positions, directions, has_ball)
-# to each agent's observation dict. Follows the observation augmentation
-# pattern from SMAC (Samvelyan et al., 2019).
+# to each agent's observation dict.
 #
-# Only defined for team-based environments (2v2+). The 3-agent Collect
-# has agents_index=[1,2,3] (each agent = own team, no teammates).
-# 1v1 environments also have no teammates, so no TeamObs variants.
+# Only defined for team-based (2v2+) environments. 1v1 and Solo variants
+# have no teammates, so no TeamObs exists for them.
 # -----------------------------------------------------------------------
 
 class SoccerTeamObsEnv(TeamObsWrapper):
     """Soccer 2v2 (16x11, IndAgObs) with SMAC-style teammate awareness."""
-    # Class-level metadata required by gymnasium.make() -- gym.Wrapper defines
-    # metadata as a @property (instance proxy), which breaks pre-instantiation
-    # checks.  Override with the base env's metadata dict.
     metadata = SoccerGame4HIndAgObsEnv16x11N2.metadata
 
     def __init__(self, **kwargs):
         super().__init__(SoccerGame4HIndAgObsEnv16x11N2(**kwargs))
 
 
-class Collect2vs2TeamObsEnv(TeamObsWrapper):
+class Collect2v2TeamObsEnv(TeamObsWrapper):
     """Collect 2v2 (10x10, IndAgObs) with SMAC-style teammate awareness."""
     metadata = CollectGame4HIndAgObsEnv10x10N2.metadata
 
@@ -85,8 +78,8 @@ class Collect2vs2TeamObsEnv(TeamObsWrapper):
         super().__init__(CollectGame4HIndAgObsEnv10x10N2(**kwargs))
 
 
-class Basketball3vs3TeamObsEnv(TeamObsWrapper):
-    """Basketball 3vs3 (19x11, IndAgObs) with SMAC-style teammate awareness."""
+class Basketball3v3TeamObsEnv(TeamObsWrapper):
+    """Basketball 3v3 (19x11, IndAgObs) with SMAC-style teammate awareness."""
     metadata = BasketballGame6HIndAgObsEnv19x11N3.metadata
 
     def __init__(self, **kwargs):
@@ -110,86 +103,46 @@ class AmericanFootball3v3TeamObsEnv(TeamObsWrapper):
 
 
 # -----------------------------------------------------------------------
-# Configuration registry (env_name -> (env_cls, default_kwargs))
+# Environment registry (v6.5.0)
 # -----------------------------------------------------------------------
 
 CONFIGURATIONS: dict[str, tuple[type, dict]] = {
-    # -----------------------------------------------------------------------
-    # Original environments (v1.0.2) - kept for backward compatibility
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-v0': (SoccerGame4HEnv10x15N2, {}),
-    'MosaicMultiGrid-Collect-v0': (CollectGame3HEnv10x10N3, {}),  # 3-agent individual
-    'MosaicMultiGrid-Collect-2vs2-v0': (CollectGame4HEnv10x10N2, {}),  # 4-agent teams
-    'MosaicMultiGrid-Collect-1vs1-v0': (CollectGame2HEnv10x10N2, {}),  # 2-agent 1v1 teams (v4.1.0)
 
-    # -----------------------------------------------------------------------
-    # IndAgObs environments (v1.1.0) - RECOMMENDED for RL training
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-2vs2-IndAgObs-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
-    'MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0': (SoccerGame2HIndAgObsEnv16x11N2, {}),  # v4.1.0
-    'MosaicMultiGrid-Collect-IndAgObs-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
-    'MosaicMultiGrid-Collect-2vs2-IndAgObs-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
-    'MosaicMultiGrid-Collect-1vs1-IndAgObs-v0': (CollectGame2HIndAgObsEnv10x10N2, {}),  # v4.1.0
+    # -------------------------------------------------------------------
+    # Soccer — 16x11 grid, walk-in scoring at goal square
+    # -------------------------------------------------------------------
+    'MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1': (SoccerSoloGreenIndAgObsEnv16x11, {}),
+    'MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v1':  (SoccerSoloBlueIndAgObsEnv16x11,  {}),
+    'MosaicMultiGrid-Soccer-1v1-IndAgObs-v1':        (SoccerGame2HIndAgObsEnv16x11N2,   {}),
+    'MosaicMultiGrid-Soccer-2v2-IndAgObs-v1':        (SoccerGame4HIndAgObsEnv16x11N2,   {}),
+    'MosaicMultiGrid-Soccer-2v2-TeamObs-v1':         (SoccerTeamObsEnv,                 {}),
 
-    # -----------------------------------------------------------------------
-    # TeamObs environments (v2.0.0) - SMAC-style teammate awareness
-    #
-    # Build on IndAgObs base envs + TeamObsWrapper. Each agent receives
-    # its local 3x3 image UNCHANGED, plus structured teammate features:
-    #   teammate_positions (N,2), teammate_directions (N,), teammate_has_ball (N,)
-    # Only for team-based (2v2+) environments. No 1v1 variants (no teammates).
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-2vs2-TeamObs-v0': (SoccerTeamObsEnv, {}),
-    'MosaicMultiGrid-Collect-2vs2-TeamObs-v0': (Collect2vs2TeamObsEnv, {}),
+    # -------------------------------------------------------------------
+    # Basketball — 19x11 grid, walk-in scoring at basket square
+    # -------------------------------------------------------------------
+    'MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1': (BasketballSoloGreenIndAgObsEnv19x11, {}),
+    'MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v1':  (BasketballSoloBlueIndAgObsEnv19x11,  {}),
+    'MosaicMultiGrid-Basketball-3v3-IndAgObs-v1':        (BasketballGame6HIndAgObsEnv19x11N3,   {}),
+    'MosaicMultiGrid-Basketball-3v3-TeamObs-v1':         (Basketball3v3TeamObsEnv,              {}),
 
-    # -----------------------------------------------------------------------
-    # Basketball environments (v3.0.3) - 3vs3 on basketball court
-    #
-    # 19x11 grid (17x9 playable), 3vs3 teams, basketball-court rendering.
-    # Same mechanics as Soccer IndAgObs (teleport pass, steal cooldown,
-    # ball respawn, first-to-2-goals termination).
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0': (BasketballGame6HIndAgObsEnv19x11N3, {}),
-    'MosaicMultiGrid-Basketball-3vs3-TeamObs-v0': (Basketball3vs3TeamObsEnv, {}),
+    # -------------------------------------------------------------------
+    # American Football — 16x11 grid, walk-in scoring at end zone column
+    # -------------------------------------------------------------------
+    'MosaicMultiGrid-AmericanFootball-Solo-Green-IndAgObs-v1': (AmericanFootballSoloGreenEnv16x11, {}),
+    'MosaicMultiGrid-AmericanFootball-Solo-Blue-IndAgObs-v1':  (AmericanFootballSoloBlueEnv16x11,  {}),
+    'MosaicMultiGrid-AmericanFootball-1v1-IndAgObs-v1':        (AmericanFootball1v1Env16x11,        {}),
+    'MosaicMultiGrid-AmericanFootball-2v2-IndAgObs-v1':        (AmericanFootball2v2Env16x11,        {}),
+    'MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v1':         (AmericanFootball2v2TeamObsEnv,      {}),
+    'MosaicMultiGrid-AmericanFootball-3v3-IndAgObs-v1':        (AmericanFootball3v3Env16x11,        {}),
+    'MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v1':         (AmericanFootball3v3TeamObsEnv,      {}),
 
-    # -----------------------------------------------------------------------
-    # Solo environments (v6.0.0) - single agent, no opponent
-    #
-    # For curriculum pre-training: removes non-stationarity (no opponent
-    # policy changing during training) and increases scoring probability
-    # (no one to steal the ball). Same grid and goal layout as team
-    # variants.  view_size can be overridden at make time:
-    #     gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0': (SoccerSoloGreenIndAgObsEnv16x11, {}),
-    'MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0': (SoccerSoloBlueIndAgObsEnv16x11, {}),
-    'MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0': (BasketballSoloGreenIndAgObsEnv19x11, {}),
-    'MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0': (BasketballSoloBlueIndAgObsEnv19x11, {}),
-
-    # -----------------------------------------------------------------------
-    # American Football environments (v6.3.0) - touchdown scoring
-    #
-    # 16x11 grid (same as Soccer), simplified scoring: walk INTO opponent's
-    # end zone while carrying ball (no drop action needed). End zones are
-    # vertical columns at x=1 (Green's, Blue scores) and x=14 (Blue's,
-    # Green scores). Supports stealing and passing mechanics.
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-AmericanFootball-Solo-Green-v0': (AmericanFootballSoloGreenEnv16x11, {}),
-    'MosaicMultiGrid-AmericanFootball-Solo-Blue-v0': (AmericanFootballSoloBlueEnv16x11, {}),
-    'MosaicMultiGrid-AmericanFootball-1v1-v0': (AmericanFootball1v1Env16x11, {}),
-    'MosaicMultiGrid-AmericanFootball-2v2-v0': (AmericanFootball2v2Env16x11, {}),
-    'MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v0': (AmericanFootball2v2TeamObsEnv, {}),
-    'MosaicMultiGrid-AmericanFootball-3v3-v0': (AmericanFootball3v3Env16x11, {}),
-    'MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v0': (AmericanFootball3v3TeamObsEnv, {}),
-
-    # -----------------------------------------------------------------------
-    # Backward compatibility: Enhanced -> IndAgObs aliases (v6.0+)
-    #
-    # Old "Enhanced" naming still works via these aliases
-    # -----------------------------------------------------------------------
-    'MosaicMultiGrid-Soccer-Enhanced-v0': (SoccerGame4HIndAgObsEnv16x11N2, {}),
-    'MosaicMultiGrid-Collect-Enhanced-v0': (CollectGame3HIndAgObsEnv10x10N3, {}),
-    'MosaicMultiGrid-Collect-2vs2-Enhanced-v0': (CollectGame4HIndAgObsEnv10x10N2, {}),
+    # -------------------------------------------------------------------
+    # Collect — 10x10 grid, collect items competitively
+    # -------------------------------------------------------------------
+    'MosaicMultiGrid-Collect-IndAgObs-v1':      (CollectGame3HIndAgObsEnv10x10N3, {}),
+    'MosaicMultiGrid-Collect-1v1-IndAgObs-v1':  (CollectGame2HIndAgObsEnv10x10N2, {}),
+    'MosaicMultiGrid-Collect-2v2-IndAgObs-v1':  (CollectGame4HIndAgObsEnv10x10N2, {}),
+    'MosaicMultiGrid-Collect-2v2-TeamObs-v1':   (Collect2v2TeamObsEnv,            {}),
 }
 
 # -----------------------------------------------------------------------

@@ -6,6 +6,49 @@ This document explains the improvements made to the **Soccer environment** in MO
 
 ---
 
+## v6.5.0 Changes
+
+### Reward Recalibration
+
+| Parameter | v6.4.0 | v6.5.0 | Reason |
+|-----------|--------|--------|--------|
+| Scoring reward | +1.0 | **+15.0** | Dominated by entropy bonus at +1.0 |
+| Timeout penalty | 0 | **−1.0** | Makes stalling actively bad |
+| `max_steps` (2v2, 1v1) | 200 | **300** | Consistent with AF; enables `buffer_size=2400` |
+| `zero_sum` | False | **True** | Scoring team +15.0, opposing team −15.0 |
+| Ball provenance (`_ball_last_carrier_team`) | absent | **present** | Blocks same-team pickup farming |
+| Pass-chain counter (`_ball_pass_count`) | absent | **present** | Penalises A→B→A bounce passing |
+
+### Reward Ladder
+
+```
++0.05/step toward goal (carrying)  →  +15.0 on goal  →  −1.0 on timeout
++0.1 on pickup (provenance-gated)
+```
+
+Soccer does **not** yet have the proximity reward (planned). The pickup + distance
+shaping is sufficient because the soccer field is smaller (16×11 vs 19×11) and
+the 2v2 format has fewer agents than basketball.
+
+### Own-Goal Prevention
+
+Agents cannot score on their own goal. The walk-in scoring check guards:
+
+```python
+if pos_tuple == goal_pos_tuple and goal_team_idx != agent.team_index:
+    # Only opponent's goal — own goal is physically impossible
+    self._team_reward(agent.team_index, rewards, 15.0)
+```
+
+### Training Results (MAPPO 2v2, 1M steps)
+
+- Entropy: 1.71 → **1.30** (goal discovered at step ~480k)
+- Episodes transitioned from all-300-step timeouts to **85–215 steps** after discovery
+- Last 10 avg reward: **+0.11** (Green team net positive)
+- Phase transition visible: policy committed to scoring actions at step ~480k
+
+---
+
 ## v6.3.0 Breaking Change: Walk-In Scoring
 
 ### **New Scoring Mechanic (Simplified for Better Learning)**
@@ -693,13 +736,13 @@ task completion and is semantically different from `noop`.
 
 ## Environment Registry
 
-### **MosaicMultiGrid-Soccer-v0** (Deprecated)
+### MosaicMultiGrid-Soccer-2v2-IndAgObs-v1 (Current)
 
 **Status:** Deprecated -- kept for backward compatibility only
 
 ```python
 # Old environment (broken, not recommended)
-env = gym.make('MosaicMultiGrid-Soccer-v0')
+env = gym.make('MosaicMultiGrid-Soccer-2v2-IndAgObs-v1')
 obs, _ = env.reset()
 
 # BUGS:
@@ -712,14 +755,14 @@ obs, _ = env.reset()
 
 ---
 
-### **MosaicMultiGrid-Soccer-Enhanced-v0** (Recommended)
+### **MosaicMultiGrid-Soccer-2v2-IndAgObs-v1** (Recommended)
 
 **Status:** [RECOMMENDED] For RL training with independent agent views
 
 ```python
 # Enhanced environment (fixed, recommended)
 env = gym.make(
-    'MosaicMultiGrid-Soccer-Enhanced-v0',
+    'MosaicMultiGrid-Soccer-2v2-IndAgObs-v1',
     max_steps=200,      # Shorter episodes for RL
     goals_to_win=2,     # First to 2 goals wins
 )
@@ -749,14 +792,14 @@ Passing is blind (teleport to random eligible teammate).
 
 ---
 
-### **MosaicMultiGrid-Soccer-2vs2-TeamObs-v0** (Recommended for team coordination)
+### **MosaicMultiGrid-Soccer-2v2-TeamObs-v1** (Recommended for team coordination)
 
 **Status:** [RECOMMENDED] For RL training requiring team coordination
 
 ```python
 # TeamObs variant -- SMAC-style teammate awareness
 env = gym.make(
-    'MosaicMultiGrid-Soccer-2vs2-TeamObs-v0',
+    'MosaicMultiGrid-Soccer-2v2-TeamObs-v1',
     render_mode='rgb_array',
 )
 obs, _ = env.reset()
@@ -808,13 +851,13 @@ is a training architecture choice.
 
 ---
 
-### **MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0** and **MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0** (New in v6.0.0)
+### **MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1** and **MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v1** (New in v6.0.0)
 
 **Status:** [NEW] single agent, no opponent
 
 ```python
 # Solo Green agent on 16x11 soccer field
-env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0')
+env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1')
 obs, _ = env.reset(seed=42)
 
 # Only 1 agent, same field and goal layout as 1v1/2v2
@@ -822,7 +865,7 @@ print(len(env.unwrapped.agents))           # 1
 print(env.unwrapped.agents[0].team_index)  # 1 (Green)
 
 # Override view_size at runtime (no separate gym ID)
-env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)
+env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1', view_size=7)
 ```
 
 **Why solo training exists:**
@@ -861,7 +904,7 @@ The policy is team-dependent `pi_agent_0` trained as Green has implicitly learne
 
 ### **Environment Comparison**
 
-| Aspect | `Soccer-v0` | `Soccer-Enhanced-v0` | `Soccer-2vs2-TeamObs-v0` | `Soccer-Solo-*-v0` |
+| Aspect | `Soccer-2v2-IndAgObs-v1` | `Soccer-2v2-IndAgObs-v1` | `Soccer-2v2-TeamObs-v1` | `Soccer-Solo-*-v1` |
 |--------|-------------|---------------------|---------------------|---------------------|
 | **Status** | Deprecated | Recommended | Recommended | New (v6.0.0) |
 | **Agents** | 4 (2v2) | 4 (2v2) | 4 (2v2) | 1 (solo, no opponent) |

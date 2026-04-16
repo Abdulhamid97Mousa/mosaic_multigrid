@@ -1,4 +1,4 @@
-# Basketball 3vs3 Environment
+# Basketball 3v3 Environment
 
 ## Overview
 
@@ -7,6 +7,30 @@ A 3-on-3 basketball game environment for multi-agent reinforcement learning rese
 <p align="center">
   <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="600">
 </p>
+
+---
+
+## v6.5.0 Changes
+
+### Reward Recalibration
+
+| Parameter | v6.4.0 | v6.5.0 | Reason |
+|-----------|--------|--------|--------|
+| Scoring reward | +1.0 | **+15.0** | Dominated by entropy bonus at +1.0; needs to be the unambiguous dominant signal |
+| Timeout penalty | 0 | **−1.0** | Without pressure, agents learn to stall |
+| Proximity reward | none | **+0.01/step within Manhattan dist 3** | Breaks "do nothing" local NE; continuous gradient toward ball from random init |
+| `max_steps` | 200 | **300** | More time for 3v3 coordination; consistent with AF default; enables correct `buffer_size=2400` |
+| `zero_sum` (3v3) | False | **True** | Competitive game: scoring team +reward, opposing team −reward |
+| Ball provenance (`_ball_last_carrier_team`) | absent | **present** | Blocks same-team pickup-farming exploit |
+| Pass-chain counter (`_ball_pass_count`) | absent | **present** | Penalises A→B→A bounce passes |
+
+### Training Results (MAPPO, 1M steps)
+
+Two runs completed under `lr=0.0007` and `lr=0.0003`. Both converged to
+~0.01 entropy reduction with oscillating critic loss — structural non-stationarity
+from 6 agents sharing one policy. A 3M-step run with `n_epochs=5` and `lr=0.0003`
+is underway. American Football 2v2 (4 agents) solved cleanly in 1M steps
+as a reference point.
 
 ---
 
@@ -76,12 +100,12 @@ def step(self, actions):
 
 | Environment ID | Observation Model | Description |
 |----------------|-------------------|-------------|
-| `MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0` | Independent agent views | Each agent sees only its 3x3 local window |
-| `MosaicMultiGrid-Basketball-3vs3-TeamObs-v0` | Independent + teammate features | 3x3 view + relative teammate positions, directions, has_ball |
-| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0` | Solo (no opponent) | Single Green agent (team 1), scores at Blue goal (17, 5). New in v6.0.0. |
-| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0` | Solo (no opponent) | Single Blue agent (team 2), scores at Green goal (1, 5). New in v6.0.0. |
+| `MosaicMultiGrid-Basketball-3v3-IndAgObs-v1` | Independent agent views | Each agent sees only its 3x3 local window |
+| `MosaicMultiGrid-Basketball-3v3-TeamObs-v1` | Independent + teammate features | 3x3 view + relative teammate positions, directions, has_ball |
+| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1` | Solo (no opponent) | Single Green agent (team 1), scores at Blue goal (17, 5). New in v6.0.0. |
+| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v1` | Solo (no opponent) | Single Blue agent (team 2), scores at Green goal (1, 5). New in v6.0.0. |
 
-The 3vs3 environments share the same game mechanics. The only difference is what information each agent receives in its observation. The solo variants use the same court and goal layout but with a single agent and no opponent — designed for curriculum pre-training.
+The 3v3 environments share the same game mechanics. The only difference is what information each agent receives in its observation. The solo variants use the same court and goal layout but with a single agent and no opponent — designed for curriculum pre-training.
 
 ---
 
@@ -92,7 +116,7 @@ import gymnasium as gym
 import mosaic_multigrid.envs
 
 # IndAgObs: independent 3x3 views only
-env = gym.make('MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0', render_mode='rgb_array')
+env = gym.make('MosaicMultiGrid-Basketball-3v3-IndAgObs-v1', render_mode='rgb_array')
 obs, info = env.reset(seed=42)
 
 # obs is a dict keyed by agent index: {0: {...}, 1: {...}, ..., 5: {...}}
@@ -112,7 +136,7 @@ env.close()
 
 ```python
 # TeamObs: 3x3 views + SMAC-style teammate awareness
-env = gym.make('MosaicMultiGrid-Basketball-3vs3-TeamObs-v0', render_mode='rgb_array')
+env = gym.make('MosaicMultiGrid-Basketball-3v3-TeamObs-v1', render_mode='rgb_array')
 obs, info = env.reset(seed=42)
 
 # Each agent's observation now includes teammate info:
@@ -162,7 +186,7 @@ env.close()
 
 ## Game Mechanics
 
-### Walk-In Scoring (v7.0+)
+### Walk-In Scoring
 
 An agent scores by:
 1. Picking up the ball (PICKUP action, face ball and press action 4)
@@ -317,18 +341,18 @@ After each goal, the ball respawns at a random empty cell (seeded by `env.np_ran
 | Criterion | Condition |
 |-----------|-----------|
 | **Terminated** | When any team scores `goals_to_win` goals (default: 2) |
-| **Truncated** | When `max_steps` reached (default: 200) |
+| **Truncated** | When `max_steps` reached (default: 300) |
 | **Winner** | First team to reach the goal threshold |
 
 ### Configuration
 
 ```python
 # Default: first to 2 goals, 200 steps max
-env = gym.make('MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0')
+env = gym.make('MosaicMultiGrid-Basketball-3v3-IndAgObs-v1')
 
 # Custom: first to 3 goals, 500 steps max
 env = gym.make(
-    'MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0',
+    'MosaicMultiGrid-Basketball-3v3-IndAgObs-v1',
     goals_to_win=3,
     max_steps=500,
 )
@@ -386,17 +410,85 @@ This works because Basketball (like Soccer and Collect) has NO doors, so door st
 
 ---
 
-## Reward Structure
+## Reward Structure (v6.5.0)
 
-| Event | Reward | Notes |
-|-------|--------|-------|
-| Pickup ball from ground | 0 | Neutral |
-| Steal ball from opponent | 0 | Neutral |
-| Pass ball to teammate | 0 | Neutral |
-| Score goal | +1 (shared to scoring team) | Positive-only, opponents get 0 |
-| Episode termination | -- | Natural signal when team wins |
+### Reward Ladder
 
-Only scoring gives reward. This creates a clear optimization objective for RL agents. Basketball uses positive-only shared team rewards (v4.2.0), matching Soccer IndAgObs and the SMAC convention.
+The reward structure is designed as a continuous ladder from random initialization
+to scoring — each rung is reachable from the one below without requiring luck:
+
+```
++0.01/step near ball  →  +0.1 on pickup  →  +0.05/step toward goal  →  +15.0 on score
+(always reachable)        (rare but reachable)  (follows naturally)       (follows naturally)
+```
+
+### Full Reward Table
+
+| Event | Reward | Condition |
+|-------|--------|-----------|
+| **Near ball (proximity)** | +0.01 / step | Agent within Manhattan dist ≤ 3 of ball, not carrying |
+| **Pickup ball** | +0.1 | Agent picks up ball; **only if last carrier was opponent or nobody** (provenance check) |
+| **Move toward goal** | +0.05 × (prev_dist − curr_dist) | While carrying; Manhattan dist to opponent's goal square |
+| **Move away from goal** | −0.05 × (curr_dist − prev_dist) | While carrying; ditto |
+| **First pass to teammate** | +0.1 | First DROP that transfers ball to a teammate (teleport pass) |
+| **Second consecutive pass (A→B→A)** | −0.2 | Penalises bounce passing that farms first-pass reward |
+| **Third+ consecutive pass** | 0 | Silent — prevents stacking negatives |
+| **Score basket** | +15.0 (scoring team) / −15.0 (opposing team) | `zero_sum=True`; walk into opponent's goal square while carrying |
+| **Timeout (no winner)** | −1.0 (all agents) | Applied when `step_count >= max_steps` and no team has won |
+
+### Why Each Layer Exists
+
+**Layer 1 — Ball provenance (`_ball_last_carrier_team`)**
+
+Without this check, agents discovered they could chain `PICKUP → DROP → PICKUP → DROP`
+in place to accumulate +0.1 per cycle with no risk. The provenance check records
+which team last carried each ball. The +0.1 pickup bonus is only paid when
+the ball comes from the opposing team or from the ground after an opponent dropped it.
+
+```python
+last_team = self._ball_last_carrier_team.get(ball_idx)
+if last_team is None or last_team != agent.team_index:
+    rewards[agent.index] += 0.1   # genuine first possession
+```
+
+**Layer 2 — Timeout penalty (−1.0)**
+
+Without a timeout penalty, "do nothing" is a safe Nash equilibrium: nobody scores,
+nobody loses. The −1.0 penalty makes stalling actively bad, forcing agents to
+engage with the ball.
+
+**Layer 3 — Scoring reward (+15.0) and `zero_sum=True`**
+
+At +1.0, the scoring signal was numerically dominated by the entropy bonus in MAPPO
+(`ent_coef=0.01 × H ≈ 0.02/step × 300 steps ≈ 6 entropy value` per episode).
+At +15.0, a single basket is worth 300 proximity-reward steps — unambiguously the
+dominant objective. `zero_sum=True` means the opposing team receives −15.0,
+creating genuine adversarial pressure.
+
+**Layer 4 — Distance shaping (×0.05) and pass-chain cap**
+
+The carrying distance shaping was raised from 0.01 to 0.05 per column/row to
+make the gradient toward the goal strong enough to overcome random-walk noise.
+The pass-chain cap (−0.2 on second consecutive pass) prevents agents from
+discovering that A→B→A teleport-pass bouncing earns +0.2 per cycle for free.
+
+### Own-Goal Prevention
+
+Agents **cannot score on their own goal**. The scoring check in `step()` includes
+an explicit `goal_team_idx != agent.team_index` guard:
+
+```python
+# In BasketballGameIndAgObsEnv.step():
+for goal_pos, goal_team_idx in zip(self.goal_pos, self.goal_index):
+    if pos_tuple == goal_pos_tuple and goal_team_idx != agent.team_index:
+        # Only opponent's goal counts — own goal physically impossible
+        if ball.index in (0, goal_team_idx):
+            self._team_reward(agent.team_index, rewards, 15.0)
+```
+
+Green team (team_index=1) can only score at the Blue goal (goal_team_idx=2),
+and vice versa. An agent standing on their own goal while carrying the ball
+receives zero reward and the ball is not removed.
 
 ---
 
@@ -433,7 +525,7 @@ court_cfg = {
 ### Render Output
 
 ```python
-env = gym.make('MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0', render_mode='rgb_array')
+env = gym.make('MosaicMultiGrid-Basketball-3v3-IndAgObs-v1', render_mode='rgb_array')
 obs, info = env.reset(seed=42)
 frame = env.render()
 # frame.shape = (352, 608, 3)  -- uint8 RGB at 32px per tile
@@ -444,10 +536,10 @@ frame = env.render()
 
 ## Comparison with Soccer and American Football
 
-| Aspect | Soccer (2v2) | Basketball (3vs3) | American Football |
+| Aspect | Soccer (2v2) | Basketball (3v3) | American Football |
 |--------|-------------|------------------|-------------------|
 | Grid size | 16 x 11 (14x9 playable) | 19 x 11 (17x9 playable) | 16 x 11 (14x9 playable) |
-| Teams | 2v2 (4 agents) | 3vs3 (6 agents) | 1v1, 2v2, 3v3 |
+| Teams | 2v2 (4 agents) | 3v3 (6 agents) | 1v1, 2v2, 3v3 |
 | Team colors | Green vs Red | Green vs Blue | Green vs Blue |
 | Goal type | Single square (1x1) | Single square (1x1) | End zone column (1x9) |
 | Goal positions | (1, 5) and (14, 5) | (1, 5) and (17, 5) | Columns x=1 and x=14 |
@@ -458,10 +550,10 @@ frame = env.render()
 | Steal cooldown | 10 steps (dual) | 10 steps (dual) | 10 steps (dual) |
 | Ball respawn | Yes | Yes | Yes |
 | Goals to win | 2 | 2 | 2 |
-| Max steps | 200 | 200 | 200 |
-| Zero-sum | No | No | No |
+| Max steps | 300 | 300 | 300 |
+| Zero-sum | Yes | Yes | Yes |
 | Observation (IndAgObs) | 3x3 local view | 3x3 local view | 3x3 local view |
-| TeamObs teammates | N=1 (1 teammate in 2v2) | N=2 (2 teammates in 3vs3) | N=1 or N=2 (depending on variant) |
+| TeamObs teammates | N=1 (1 teammate in 2v2) | N=2 (2 teammates in 3v3) | N=1 or N=2 (depending on variant) |
 
 **Consistent mechanics across all three sports:**
 - Walk-in scoring (carry ball → step into goal area → automatic score)
@@ -534,7 +626,7 @@ Single-agent basketball variants with **no opponent on the court**. The agent le
 
 ### Why Solo Training?
 
-Training IPPO directly on 3vs3 basketball is hard because:
+Training IPPO directly on 3v3 basketball is hard because:
 - **Sparse reward:** the 6-step scoring chain (navigate → face → pickup → navigate → face → drop) is extremely unlikely to occur by random exploration on a 17x9 playable area
 - **Non-stationarity:** 5 other agents are changing their policies during training, so the agent's "environment" keeps shifting
 - **Credit assignment:** with 3 agents per team, it is hard to determine which agent's actions contributed to a goal
@@ -545,8 +637,8 @@ Solo training removes all three problems. The agent faces a stationary environme
 
 | Environment ID | Team | Scores at | Checkpoint key |
 |----------------|------|-----------|----------------|
-| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0` | Green (team 1) | Blue goal (17, 5) | `agent_0` (deploy directly as `agent_0`) |
-| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0` | Blue (team 2) | Green goal (1, 5) | `agent_0` (remap to `agent_1` at deployment) |
+| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1` | Green (team 1) | Blue goal (17, 5) | `agent_0` (deploy directly as `agent_0`) |
+| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v1` | Blue (team 2) | Green goal (1, 5) | `agent_0` (remap to `agent_1` at deployment) |
 
 ### Quick Start
 
@@ -555,13 +647,13 @@ import gymnasium as gym
 from mosaic_multigrid.envs import *
 
 # Solo Green agent on basketball court
-env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0')
+env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1')
 obs, info = env.reset(seed=42)
 print(len(env.unwrapped.agents))  # 1
 print(obs[0]['image'].shape)      # (3, 3, 3)
 
 # Override view_size at make time (no separate gym ID needed)
-env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0', view_size=7)
+env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1', view_size=7)
 obs, info = env.reset(seed=42)
 print(obs[0]['image'].shape)      # (7, 7, 3)
 ```
@@ -605,7 +697,7 @@ The solo classes inherit all IndAgObs mechanics, but several become no-ops:
 - Outlet passing after steals
 - Zone defense vs man-to-man defense emergence
 
-The 3vs3 format creates richer emergent behaviors than 2v2 Soccer because:
+The 3v3 format creates richer emergent behaviors than 2v2 Soccer because:
 - Passing has 2 targets (tactical choice, not forced)
 - Defense requires 3 agents to cover 3 opponents
 - Off-ball movement becomes meaningful (creating space for teammates)

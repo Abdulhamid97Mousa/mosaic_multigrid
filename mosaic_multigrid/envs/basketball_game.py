@@ -71,6 +71,7 @@ class BasketballGameEnv(MultiGridEnv):
         zero_sum: bool = False,
         render_mode: str | None = None,
         max_steps: int = 10000,
+        global_obs: bool = False,
     ):
         self.goal_pos = goal_pos or []
         self.goal_index = goal_index or []
@@ -109,6 +110,7 @@ class BasketballGameEnv(MultiGridEnv):
             see_through_walls=False,
             agent_view_size=view_size,
             render_mode=render_mode,
+            global_obs=global_obs,
         )
 
     # ------------------------------------------------------------------
@@ -264,6 +266,8 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
         goals_to_win: int = 2,
         steal_cooldown: int = 10,
         reward_shaping: bool = True,
+        timeout_penalty: float = -1.0,
+        global_obs: bool = False,
     ):
         super().__init__(
             size=size,
@@ -278,16 +282,25 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
             zero_sum=zero_sum,
             render_mode=render_mode,
             max_steps=max_steps,
+            global_obs=global_obs,
         )
         self.goals_to_win = goals_to_win
         self.steal_cooldown = steal_cooldown
         self.reward_shaping = reward_shaping
+        self.timeout_penalty = timeout_penalty
         self.team_scores: dict[int, int] = {}
         self.goal_scored_by: list[dict] = []
         self.passes_completed: list[dict] = []
         self.steals_completed: list[dict] = []
         self._prev_carrying: dict[int, bool] = {}
         self._prev_pos: dict[int, tuple[int, int]] = {}
+        # Ball provenance (v6.5.0): maps ball_index -> last carrier team.
+        # Blocks the pass-loop pickup exploit. See RELEASE_NOTES.md.
+        self._ball_last_carrier_team: dict[int, int] = {}
+        # Consecutive pass counter per ball (v6.5.0).
+        # First pass earns +0.1; second+ consecutive pass earns -0.2 penalty.
+        # Resets when: ball hits ground, ball stolen, goal scored, episode reset.
+        self._ball_pass_count: dict[int, int] = {}
 
     def get_full_render(self, highlight: bool, tile_size: int):
         """Override to use basketball-court rendering."""
@@ -312,6 +325,9 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
         for agent in self.agents:
             self._prev_carrying[agent.index] = agent.state.carrying is not None
             self._prev_pos[agent.index] = (int(agent.state.pos[0]), int(agent.state.pos[1]))
+        # Ball provenance is empty at reset.
+        self._ball_last_carrier_team = {}
+        self._ball_pass_count = {}
         return obs, info
 
     def step(self, actions):
@@ -342,7 +358,7 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
                         # Ball index 0 is wildcard (can score at any goal)
                         if ball.index in (0, goal_team_idx):
                             # GOAL! Award team reward
-                            self._team_reward(agent.team_index, rewards, 1.0)
+                            self._team_reward(agent.team_index, rewards, 15.0)
 
                             # Track which agent scored
                             self.goal_scored_by.append({
@@ -351,8 +367,9 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
                                 "team": agent.team_index,
                             })
 
-                            # Remove ball from agent and respawn
+                            # Remove ball from agent and respawn; reset pass chain.
                             agent.state.carrying = None
+                            self._ball_pass_count[ball.index] = 0
                             new_ball = Ball(color=ball.color, index=ball.index)
                             self.place_obj(new_ball)
 
@@ -365,6 +382,20 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
 
         # ---- Reward shaping (SMAC-style dense rewards) ----
         if self.reward_shaping:
+            # Proximity reward: build ball positions once per step.
+            _ball_positions = []
+            for _a in self.agents:
+                if _a.state.carrying is not None:
+                    _ball_positions.append(
+                        (int(_a.state.pos[0]), int(_a.state.pos[1]))
+                    )
+            if not _ball_positions:
+                from mosaic_multigrid.core.world_object import Ball as _Ball
+                for _x in range(self.width):
+                    for _y in range(self.height):
+                        if isinstance(self.grid.get(_x, _y), _Ball):
+                            _ball_positions.append((_x, _y))
+
             for agent in self.agents:
                 carrying = agent.state.carrying is not None
                 cx, cy = int(agent.state.pos[0]), int(agent.state.pos[1])
@@ -372,16 +403,55 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
                 px, py = self._prev_pos.get(agent.index, (cx, cy))
                 gx, gy = self._target_goal_pos(agent)
 
+                # +0.1 only when last carrier was opponent or nobody.
+                # See v6.5.0 release notes: same-team pass-loop exploit.
                 if carrying and not prev_carrying:
-                    rewards[agent.index] += 0.1
+                    ball = agent.state.carrying
+                    ball_idx = ball.index
+                    last_team = self._ball_last_carrier_team.get(ball_idx)
+                    if last_team is None or last_team != agent.team_index:
+                        rewards[agent.index] += 0.1
 
                 if carrying:
                     prev_dist = abs(px - gx) + abs(py - gy)
                     curr_dist = abs(cx - gx) + abs(cy - gy)
-                    rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
+                    rewards[agent.index] += 0.05 * (prev_dist - curr_dist)
+
+                # Proximity reward: +0.01/step when within Manhattan dist 3
+                # of any ball but not carrying. Bootstraps exploration toward
+                # the ball before the first pickup event — the missing rung
+                # between "random walk" and "seek and carry."
+                if not carrying and _ball_positions:
+                    min_dist = min(
+                        abs(cx - bx) + abs(cy - by)
+                        for bx, by in _ball_positions
+                    )
+                    if min_dist <= 3:
+                        rewards[agent.index] += 0.01
+
+                # Update ball provenance after shaping decision
+                if carrying:
+                    ball_idx = agent.state.carrying.index
+                    self._ball_last_carrier_team[ball_idx] = agent.team_index
 
                 self._prev_carrying[agent.index] = carrying
                 self._prev_pos[agent.index] = (cx, cy)
+
+        # ---- Timeout penalty: punish all agents if episode ends with no goal ----
+        _winner = next(
+            (t for t, s in self.team_scores.items() if s >= self.goals_to_win),
+            None,
+        )
+        if self.step_count >= self.max_steps and _winner is None:
+            for agent in self.agents:
+                rewards[agent.index] += self.timeout_penalty
+
+        # Re-sync terminated dict: base class builds it before our scoring check
+        # runs, so any a.state.terminated=True set by the win condition above
+        # is invisible to the caller unless we propagate it here.
+        for a in self.agents:
+            if a.state.terminated:
+                terms[a.index] = True
 
         # ---- Telemetry ----
         for agent in self.agents:
@@ -428,10 +498,13 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
                 if hasattr(agent, 'action_cooldown') and agent.action_cooldown > 0:
                     return
                 if target.team_index != agent.team_index:
-                    agent.state.carrying = target.state.carrying
+                    ball = target.state.carrying
+                    agent.state.carrying = ball
                     target.state.carrying = None
                     agent.action_cooldown = self.steal_cooldown
                     target.action_cooldown = self.steal_cooldown
+                    # Steal resets the pass chain — new possession starts fresh.
+                    self._ball_pass_count[ball.index] = 0
 
                     # Track the steal
                     self.steals_completed.append({
@@ -473,9 +546,21 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
             and not a.state.terminated
         ]
         if teammates:
+            ball = agent.state.carrying
+            ball_idx = ball.index
             target = teammates[self.np_random.integers(len(teammates))]
-            target.state.carrying = agent.state.carrying
+            target.state.carrying = ball
             agent.state.carrying = None
+
+            # Pass reward / double-pass penalty.
+            count = self._ball_pass_count.get(ball_idx, 0) + 1
+            self._ball_pass_count[ball_idx] = count
+            if count == 1:
+                rewards[agent.index] += 0.1   # first pass: reward teamwork
+            elif count == 2:
+                rewards[agent.index] -= 0.2   # second pass: punish A→B→A bounce
+            # count >= 3: silence. Prevents random-policy teleport cascades from
+            # stacking unlimited -0.2 per hop and burying all positive signals.
 
             # Track the completed pass
             self.passes_completed.append({
@@ -483,13 +568,16 @@ class BasketballGameIndAgObsEnv(BasketballGameEnv):
                 "passer": agent.index,
                 "receiver": target.index,
                 "team": agent.team_index,
+                "pass_count": count,
             })
             return
 
-        # Priority 2: Drop on empty ground (fallback)
+        # Priority 2: Drop on empty ground — resets pass chain.
         if fwd_obj is None and self._agent_at(fwd_pos) is None:
-            self.grid.set(*fwd_pos, agent.state.carrying)
-            agent.state.carrying.cur_pos = fwd_pos
+            ball = agent.state.carrying
+            self._ball_pass_count[ball.index] = 0
+            self.grid.set(*fwd_pos, ball)
+            ball.cur_pos = fwd_pos
             agent.state.carrying = None
 
 
@@ -508,11 +596,11 @@ class BasketballGame6HIndAgObsEnv19x11N3(BasketballGameIndAgObsEnv):
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
     - Teleport passing to any teammate
-    - 200 max_steps (enough for 2-3 scoring attempts)
+    - 300 max_steps (more time for strategic play and ball exchanges)
     """
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 300)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -523,7 +611,7 @@ class BasketballGame6HIndAgObsEnv19x11N3(BasketballGameIndAgObsEnv):
             num_balls=[1],
             agents_index=[1, 1, 1, 2, 2, 2],  # 3vs3
             balls_index=[0],  # Wildcard ball
-            zero_sum=False,
+            zero_sum=True,
             **kwargs,
         )
 

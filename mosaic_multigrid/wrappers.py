@@ -225,6 +225,99 @@ class OneHotObsWrapper(gym.ObservationWrapper):
 
 
 # -----------------------------------------------------------------------
+# GlobalObsWrapper
+# -----------------------------------------------------------------------
+
+class GlobalObsWrapper(gym.ObservationWrapper):
+    """
+    Add a ``'global_rgb'`` key to every agent's observation dict.
+
+    Following the MeltingPot ``WORLD.RGB`` convention, every agent receives
+    an identical top-down RGB render of the **entire grid** — a global map
+    of the current environment state.
+
+    Intended for **debugging and visualization**, not as a training
+    observation (RGB rendering is expensive and not partial-observable).
+    Compose with IndAgObs environments to get both the agent's local view
+    and the global map side-by-side.
+
+    Parameters
+    ----------
+    env : gym.Env
+        The wrapped environment (any mosaic_multigrid env).
+    tile_size : int
+        Pixel size of each grid tile in the RGB output.  Default 32
+        gives ``(width×32, height×32, 3)`` — e.g. 512×352 for 16×11.
+    highlight : bool
+        If ``True``, each agent's field-of-view is shaded on the global
+        map (same highlight used by ``render_mode='human'``).  Default
+        ``False`` gives a clean overhead map with no overlays.
+
+    Example
+    -------
+    ::
+
+        import gymnasium as gym
+        import mosaic_multigrid
+        from mosaic_multigrid.wrappers import GlobalObsWrapper
+
+        env = gym.make('MosaicMultiGrid-Soccer-2v2-IndAgObs-v1')
+        env = GlobalObsWrapper(env)
+
+        obs, _ = env.reset()
+        frame = obs[0]['global_rgb']   # (352, 512, 3) uint8 — full field
+        agent_view = obs[0]['image']   # (3, 3, 3) uint8 — partial view
+
+    Notes
+    -----
+    The global RGB is generated once per step and shared across all agents
+    (O(1) render cost regardless of agent count).  The underlying
+    :meth:`~mosaic_multigrid.base.MultiGridEnv.get_frame` call uses the
+    environment's sport-specific renderer (basketball court, football field,
+    soccer pitch) so the visual matches what ``render_mode='rgb_array'``
+    would produce.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        tile_size: int = 32,
+        highlight: bool = False,
+    ):
+        super().__init__(env)
+        self._tile_size = tile_size
+        self._highlight = highlight
+
+        base = env.unwrapped
+        # Shape: (width × tile_size, height × tile_size, 3)
+        global_rgb_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(base.width * tile_size, base.height * tile_size, 3),
+            dtype=np.uint8,
+        )
+
+        self.observation_space = spaces.Dict({
+            agent_id: spaces.Dict({
+                **agent_space.spaces,
+                'global_rgb': global_rgb_space,
+            })
+            for agent_id, agent_space in env.observation_space.items()
+        })
+
+    def observation(self, obs: dict) -> dict:
+        # One render shared by all agents — O(1) cost
+        global_rgb = self.env.unwrapped.get_frame(
+            highlight=self._highlight,
+            tile_size=self._tile_size,
+        )
+        return {
+            agent_id: {**agent_obs, 'global_rgb': global_rgb}
+            for agent_id, agent_obs in obs.items()
+        }
+
+
+# -----------------------------------------------------------------------
 # SingleAgentWrapper
 # -----------------------------------------------------------------------
 
