@@ -4,20 +4,25 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## [6.5.0] - 2026-04-16
+## [6.5.0] - 2026-04-18
 
 ### Overview
 
-This release fixes the reward signal across all three sport environments so that
-MAPPO/IPPO agents can actually learn to score. The previous rewards (+1.0 scoring,
-no timeout pressure, no proximity signal) were too weak for the sparse-reward
-landscape on these grids. v6.5.0 recalibrates all reward components based on
-empirical training results with MAPPO.
+This release fixes the reward signal across all sport environments (American Football,
+Soccer, Basketball) and Collect to eliminate reward hacking and incentivise fast, decisive
+play.
 
-**Training validation (MAPPO, 1M steps, 8 parallel envs):**
-- American Football 2v2: entropy 1.76→1.09, episodes end in avg 80 steps (vs 300 timeout) ✓
-- Soccer 2v2: entropy 1.71→1.30, goal discovered at step ~480k, episodes < 300 steps ✓
-- Basketball 3v3: ongoing (3M-step run with `n_epochs=5`, `lr=3e-4`)
+**Reward hacking discovered via MAPPO/IPPO evaluation:** Agents learned to spam
+`pickup → drop → pickup` earning `+0.10` per cycle indefinitely without advancing toward
+the goal. In 1v1 competitive settings IPPO achieved ep_ret=14.37 over 200 steps purely
+from pickup/drop cycles, completely ignoring the +15 scoring reward.
+
+**v6.5.0 removes the exploitable components and replaces them with hack-proof alternatives.**
+
+**Training validation (MAPPO-scan, JAX, 131M steps per variant):**
+- Solo (G-1v0, B-0v1): ep_ret ≈ 1.1–1.2, entropy ≈ 0.37 — converged ✓
+- 2v2: IPPO scored in 32 steps with emergent role specialisation ✓
+- 1v1/3v3 competitive: near-zero ep_ret at 2000 updates — need more training
 
 ### Breaking Changes
 
@@ -43,15 +48,48 @@ Affected classes:
 - `SoccerGame2HIndAgObsEnv16x11N2` (1v1)
 - `BasketballGame6HIndAgObsEnv19x11N3` (3v3)
 
-### New Features
+#### Removed: `+0.1` pickup reward and `+0.01` proximity reward (all sport environments)
+
+The pickup reward was the root cause of the hacking loop — removing it eliminates all
+pickup/drop cycling. The proximity reward was also removed since it was decoupled from
+possession and therefore not tied to actual goal progress.
+
+`_ball_last_carrier_team` tracking in `AmericanFootballEnv` is also removed (no longer
+needed since the reward it guarded is gone).
+
+#### Added: Time-efficiency bonus on scoring (all sport and Collect environments)
+
+```
+score_reward = base + (max_steps - step) × 0.05
+```
+
+Scoring at step 10 yields ≈ +14.5 bonus; at step 290 yields ≈ +0.5. This creates
+a continuous pressure to advance quickly without making late-game goals worthless.
+Applied to all scoring paths including JAX environments (`MAX_STEPS - new_state.step`).
+
+#### Added: `+0.3` steal reward (all sport environments)
+
+Fires only when an agent takes the ball from an **opponent who is currently carrying it**.
+Cannot be farmed since it requires a live opponent in possession.
+
+```python
+# JAX: steal detection via ball_carried_by state
+prev_carrier = state.ball_carried_by[safe_bidx]
+is_steal = picked_up & (prev_carrier >= 0) & (prev_carrier_team != team)
+```
+
+Also fixed: Basketball `_handle_pickup` now restricts steals to opponents only.
+
+#### Kept: `+0.01 × Δdistance while carrying` (all sport environments)
+
+Carrying-gated distance shaping remains. Drop resets it — pickup/drop cycling yields zero.
+
+### New Features (retained from earlier 6.5.0 work)
 
 #### Ball provenance tracking (`_ball_last_carrier_team`)
 
-Blocks the same-team pickup farming exploit where agents chain
-`PICKUP → DROP → PICKUP → DROP` repeatedly to accumulate +0.1 pickup rewards
-without ever advancing toward the goal. Now the `+0.1` pickup reward is only
-awarded when the ball's previous carrier was from the **opposing** team (or
-nobody), not the agent's own team.
+~~Blocks the same-team pickup farming exploit~~ — this mechanism is now superseded by full
+pickup reward removal. Retained in Soccer and Basketball for internal bookkeeping only.
 
 ```python
 # In BasketballGameIndAgObsEnv / SoccerGameIndAgObsEnv step():

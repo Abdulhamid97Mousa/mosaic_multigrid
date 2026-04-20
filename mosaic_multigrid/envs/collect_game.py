@@ -165,7 +165,8 @@ class CollectGameEnv(MultiGridEnv):
             # Ball index 0 is wildcard, otherwise must match agent team
             if fwd_obj.index in (0, agent.team_index):
                 self.grid.set(*fwd_pos, None)
-                self._team_reward(agent.team_index, rewards, fwd_obj.reward)
+                time_bonus = (self.max_steps - self.step_count) * 0.05
+                self._team_reward(agent.team_index, rewards, fwd_obj.reward + time_bonus)
 
     def _handle_drop(
         self,
@@ -304,7 +305,8 @@ class CollectGameIndAgObsEnv(CollectGameEnv):
             # Ball index 0 is wildcard, otherwise must match agent team
             if fwd_obj.index in (0, agent.team_index):
                 self.grid.set(*fwd_pos, None)
-                self._team_reward(agent.team_index, rewards, fwd_obj.reward)
+                time_bonus = (self.max_steps - self.step_count) * 0.05
+                self._team_reward(agent.team_index, rewards, fwd_obj.reward + time_bonus)
 
                 self._remaining_balls -= 1
                 if self._remaining_balls <= 0:

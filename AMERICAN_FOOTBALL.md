@@ -35,49 +35,45 @@ Row 10: [wall wall wall ...     wall wall]
 
 ## Reward Shaping (v6.5.0)
 
-American Football includes SMAC-style dense reward shaping, enabled by default.
-The reward structure is a continuous ladder: each rung is reachable from the
-one below without requiring luck.
-
-```
-+0.01/step near ball  →  +0.1 on pickup  →  +0.05/step toward end zone  →  +15.0 on touchdown
-(always reachable)        (rare but reachable)  (follows naturally)            (follows naturally)
-```
+American Football includes dense reward shaping enabled by default (`reward_shaping=True`).
+All components are hack-proof: no reward fires on a bare action — only on meaningful
+game-state transitions toward scoring.
 
 ### Reward Components
 
 | Event | Reward | When |
 |-------|--------|------|
-| **Near ball (proximity)** | +0.01 / step | Agent within Manhattan dist ≤ 3 of ball, not carrying |
-| **Pickup ball** | +0.1 | Agent picks up ball; only if last carrier was opponent or nobody (provenance check) |
-| **Move toward end zone** | +0.05 × Δcol | While carrying, each column closer to target end zone |
-| **Move away from end zone** | −0.05 × Δcol | While carrying, each column farther from target |
-| **First pass to teammate** | +0.1 | First teleport pass per possession chain |
-| **Second consecutive pass (A→B→A)** | −0.2 | Penalises bounce passing that farms the pass reward |
-| **Touchdown** | +15.0 | Walk into opponent's end zone while carrying |
-| **Opponent touchdown** | −15.0 | When `zero_sum=True` (all competitive variants) |
+| **Move toward end zone** | +0.01 × Δcol | While **carrying**, each column closer to target end zone |
+| **Steal ball from opponent** | +0.3 | Agent takes ball from an opponent **currently carrying** it |
+| **Touchdown** | +15 + (max_steps − step) × 0.05 | Walk into opponent's end zone while carrying |
+| **Opponent touchdown** | −(15 + time_bonus) | When `zero_sum=True` (all competitive variants) |
 | **Timeout (no winner)** | −1.0 (all agents) | Applied when `max_steps` reached with no winner |
 
-### Why Each Layer Exists
+Time-efficiency bonus at scoring step 10: +14.5 extra (total ≈ 29.5). At step 290: +0.5 extra.
 
-**Layer 1 — Ball provenance (`_ball_last_carrier_team`)**
+### Why Each Component Exists
 
-Blocks the same-team pickup-farming exploit where agents chain
-`PICKUP → DROP → PICKUP → DROP` to accumulate +0.1 per cycle in place.
-The +0.1 pickup bonus is only paid when the ball last belonged to the
-opposing team (or nobody). Implemented via `_ball_last_carrier_team` dict
-mapping `ball_index → last_carrier_team_index`.
+**Carrying-gated distance shaping**
 
-**Layer 2 — Timeout penalty (−1.0)**
+Only fires while the agent holds the ball and moves toward the goal. Drop immediately
+resets it — `pickup → drop → pickup` cycling yields zero reward, closing the exploit
+where agents earned +0.1/step without advancing.
 
-Without a timeout penalty, "do nothing" is a safe Nash equilibrium — nobody
-scores, nobody loses. The −1.0 penalty makes stalling actively bad.
+**Steal reward (+0.3)**
 
-**Layer 3 — Touchdown reward (+15.0) and `zero_sum=True`**
+Encourages interception and defensive pressure. Requires an opponent in active possession
+— cannot be farmed by picking up ground balls or cycling with teammates.
 
-At +1.0, the scoring signal was numerically dominated by the PPO entropy bonus.
-At +15.0, one touchdown is worth 300 proximity-reward steps — the unambiguous
-dominant objective. `zero_sum=True` means the opposing team receives −15.0.
+**Time-efficiency scoring**
+
+Transforms the single +15 terminal reward into a gradient over the whole episode.
+Scoring on step 10 is dramatically better than step 290 — agents are incentivised to
+find the ball and advance immediately rather than stalling.
+
+**Timeout penalty (−1.0)**
+
+Without it, "do nothing" is a safe Nash equilibrium. The penalty makes stalling actively
+costly for both teams.
 
 **Layer 4 — Distance shaping (×0.05) and pass-chain cap**
 

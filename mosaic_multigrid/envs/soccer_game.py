@@ -63,7 +63,6 @@ class SoccerGameEnv(MultiGridEnv):
         zero_sum: bool = False,
         render_mode: str | None = None,
         max_steps: int = 10000,
-        global_obs: bool = False,
     ):
         self.goal_pos = goal_pos or []
         self.goal_index = goal_index or []
@@ -102,7 +101,6 @@ class SoccerGameEnv(MultiGridEnv):
             see_through_walls=False,
             agent_view_size=view_size,
             render_mode=render_mode,
-            global_obs=global_obs,
         )
 
     # ------------------------------------------------------------------
@@ -294,8 +292,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         goals_to_win: int = 2,
         steal_cooldown: int = 10,
         reward_shaping: bool = True,
-        timeout_penalty: float = -1.0,
-        global_obs: bool = False,
     ):
         """
         Parameters
@@ -308,11 +304,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             If True (default), add dense intermediate rewards:
             +0.1 for pickup, +/-0.01 per step toward/away from goal.
             Set False for sparse evaluation (goal-only rewards).
-        timeout_penalty : float
-            Reward applied to all agents when the episode time limit is
-            reached without any goal being scored. Default: -1.0 (equal
-            magnitude to the goal reward, creating urgency without
-            incentivising reckless play).
         """
         super().__init__(
             size=size,
@@ -327,12 +318,10 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             zero_sum=zero_sum,
             render_mode=render_mode,
             max_steps=max_steps,
-            global_obs=global_obs,
         )
         self.goals_to_win = goals_to_win
         self.steal_cooldown = steal_cooldown
         self.reward_shaping = reward_shaping
-        self.timeout_penalty = timeout_penalty
         self.team_scores: dict[int, int] = {}
         self.goal_scored_by: list[dict] = []
         self.passes_completed: list[dict] = []
@@ -343,10 +332,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         # Blocks the same-team pass-loop reward-hacking exploit. See
         # RELEASE_NOTES.md and tests/test_pickup_shaping_no_exploit.py.
         self._ball_last_carrier_team: dict[int, int] = {}
-        # Consecutive pass counter per ball (v6.5.0).
-        # First pass earns +0.1; second+ consecutive pass earns -0.2 penalty.
-        # Resets when: ball hits ground, ball stolen, goal scored, episode reset.
-        self._ball_pass_count: dict[int, int] = {}
 
     def get_full_render(self, highlight: bool, tile_size: int):
         """Override to use FIFA-style rendering instead of default grid tiles."""
@@ -379,7 +364,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         # Ball provenance is empty at reset. First pickup of any ball earns
         # the +0.1 bonus via the `last_team is None` branch.
         self._ball_last_carrier_team = {}
-        self._ball_pass_count = {}
 
         return obs, info
 
@@ -411,8 +395,9 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
 
                         # Ball index 0 is wildcard (can score at any goal)
                         if ball.index in (0, goal_team_idx):
-                            # GOAL! Award team reward
-                            self._team_reward(agent.team_index, rewards, 15.0)
+                            # GOAL! Award team reward + time-efficiency bonus
+                            time_bonus = (self.max_steps - self.step_count) * 0.05
+                            self._team_reward(agent.team_index, rewards, 1.0 + time_bonus)
 
                             # Track which agent scored
                             self.goal_scored_by.append({
@@ -421,9 +406,8 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                                 "team": agent.team_index,
                             })
 
-                            # Remove ball from agent, reset pass chain, and respawn.
+                            # Remove ball from agent and respawn
                             agent.state.carrying = None
-                            self._ball_pass_count[ball.index] = 0
                             new_ball = Ball(color=ball.color, index=ball.index)
                             self.place_obj(new_ball)
 
@@ -434,79 +418,28 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                                     a.state.terminated = True
                             break
 
-        # ---- Reward shaping (SMAC-style dense rewards) ----
+        # ---- Reward shaping ----
         if self.reward_shaping:
-            # Proximity reward: build ball positions once per step.
-            _ball_positions = []
-            for _a in self.agents:
-                if _a.state.carrying is not None:
-                    _ball_positions.append(
-                        (int(_a.state.pos[0]), int(_a.state.pos[1]))
-                    )
-            if not _ball_positions:
-                from mosaic_multigrid.core.world_object import Ball as _Ball
-                for _x in range(self.width):
-                    for _y in range(self.height):
-                        if isinstance(self.grid.get(_x, _y), _Ball):
-                            _ball_positions.append((_x, _y))
+            # +0.3 steal bonus — agents that took the ball from a carrying opponent
+            steal_set = {s["stealer"] for s in self.steals_completed[steals_before:]}
 
             for agent in self.agents:
                 carrying = agent.state.carrying is not None
                 cx, cy = int(agent.state.pos[0]), int(agent.state.pos[1])
-                prev_carrying = self._prev_carrying.get(agent.index, False)
                 px, py = self._prev_pos.get(agent.index, (cx, cy))
                 gx, gy = self._target_goal_pos(agent)
 
-                # +0.1 for picking up ball, ONLY when last carrier was an
-                # opposing team or nobody. Same-team pickup earns zero so
-                # pass-loop farming is impossible. See v6.5.0 release notes.
-                if carrying and not prev_carrying:
-                    ball = agent.state.carrying
-                    ball_idx = ball.index
-                    last_team = self._ball_last_carrier_team.get(ball_idx)
-                    if last_team is None or last_team != agent.team_index:
-                        rewards[agent.index] += 0.1
+                if agent.index in steal_set:
+                    rewards[agent.index] += 0.3
 
+                # +0.01 × Δdist toward goal, only while carrying (cannot be hacked by drop)
                 if carrying:
                     prev_dist = abs(px - gx) + abs(py - gy)
                     curr_dist = abs(cx - gx) + abs(cy - gy)
-                    rewards[agent.index] += 0.05 * (prev_dist - curr_dist)
-
-                # Proximity reward: +0.01/step when within Manhattan dist 3
-                # of any ball but not carrying. Bootstraps exploration toward
-                # the ball before the first pickup event — the missing rung
-                # between "random walk" and "seek and carry."
-                if not carrying and _ball_positions:
-                    min_dist = min(
-                        abs(cx - bx) + abs(cy - by)
-                        for bx, by in _ball_positions
-                    )
-                    if min_dist <= 3:
-                        rewards[agent.index] += 0.01
-
-                # Update ball provenance after shaping decision
-                if carrying:
-                    ball_idx = agent.state.carrying.index
-                    self._ball_last_carrier_team[ball_idx] = agent.team_index
+                    rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
 
                 self._prev_carrying[agent.index] = carrying
                 self._prev_pos[agent.index] = (cx, cy)
-
-        # ---- Timeout penalty: punish all agents if episode ends with no goal ----
-        _winner = next(
-            (t for t, s in self.team_scores.items() if s >= self.goals_to_win),
-            None,
-        )
-        if self.step_count >= self.max_steps and _winner is None:
-            for agent in self.agents:
-                rewards[agent.index] += self.timeout_penalty
-
-        # Re-sync terminated dict: base class builds it before our scoring check
-        # runs, so any a.state.terminated=True set by the win condition above
-        # is invisible to the caller unless we propagate it here.
-        for a in self.agents:
-            if a.state.terminated:
-                terms[a.index] = True
 
         # ---- Telemetry ----
         for agent in self.agents:
@@ -564,11 +497,8 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                 # Check if teams are different (can only steal from opponent)
                 if target.team_index != agent.team_index:
                     # Steal successful!
-                    ball = target.state.carrying
-                    agent.state.carrying = ball
+                    agent.state.carrying = target.state.carrying
                     target.state.carrying = None
-                    # Steal resets the pass chain — new possession starts fresh.
-                    self._ball_pass_count[ball.index] = 0
 
                     # Track the steal
                     self.steals_completed.append({
@@ -614,23 +544,9 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             and not a.state.terminated
         ]
         if teammates:
-            ball = agent.state.carrying
-            ball_idx = ball.index
             target = teammates[self.np_random.integers(len(teammates))]
-            target.state.carrying = ball
+            target.state.carrying = agent.state.carrying
             agent.state.carrying = None
-
-            # Pass reward / double-pass penalty.
-            # First consecutive pass: +0.1 (reward teamwork).
-            # Second+ consecutive pass without score or possession reset: -0.2.
-            count = self._ball_pass_count.get(ball_idx, 0) + 1
-            self._ball_pass_count[ball_idx] = count
-            if count == 1:
-                rewards[agent.index] += 0.1   # first pass: reward teamwork
-            elif count == 2:
-                rewards[agent.index] -= 0.2   # second pass: punish A→B→A bounce
-            # count >= 3: silence. Prevents random-policy teleport cascades from
-            # stacking unlimited -0.2 per hop and burying all positive signals.
 
             # Track the completed pass
             self.passes_completed.append({
@@ -638,16 +554,13 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                 "passer": agent.index,
                 "receiver": target.index,
                 "team": agent.team_index,
-                "pass_count": count,
             })
             return
 
-        # Priority 2: Drop on empty ground — resets pass chain.
+        # Priority 2: Drop on empty ground (fallback)
         if fwd_obj is None and self._agent_at(fwd_pos) is None:
-            ball = agent.state.carrying
-            self._ball_pass_count[ball.index] = 0
-            self.grid.set(*fwd_pos, ball)
-            ball.cur_pos = fwd_pos
+            self.grid.set(*fwd_pos, agent.state.carrying)
+            agent.state.carrying.cur_pos = fwd_pos
             agent.state.carrying = None
 
 
@@ -661,12 +574,12 @@ class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
     - First to 2 goals wins
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
-    - 300 max_steps (more time for strategic play and ball exchanges)
+    - 200 max_steps (enough for 2-3 scoring attempts)
     """
 
     def __init__(self, **kwargs):
         # Set default max_steps for RL training (can be overridden)
-        kwargs.setdefault('max_steps', 300)
+        kwargs.setdefault('max_steps', 200)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -677,7 +590,7 @@ class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             num_balls=[1],
             agents_index=[1, 1, 2, 2],  # 2v2 teams
             balls_index=[0],  # Wildcard ball
-            zero_sum=True,
+            zero_sum=False,
             **kwargs,
         )
 
@@ -696,12 +609,12 @@ class SoccerGame2HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
     - First to 2 goals wins
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
-    - 300 max_steps
+    - 200 max_steps
     """
 
     def __init__(self, **kwargs):
         # Set default max_steps for RL training (can be overridden)
-        kwargs.setdefault('max_steps', 300)
+        kwargs.setdefault('max_steps', 200)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -784,4 +697,77 @@ class SoccerSoloBlueIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
             balls_index=[0],
             zero_sum=False,
             **kwargs,
+        )
+
+
+# -----------------------------------------------------------------------
+# One-sided multi-agent variants (cooperative, no opponent)
+# -----------------------------------------------------------------------
+
+class SoccerGreen2v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """2 Green agents, 0 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerBlue0v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """0 Green agents, 2 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGreen3v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """3 Green agents, 0 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerBlue0v3IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """0 Green agents, 3 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+# -----------------------------------------------------------------------
+# 3v3 variant
+# -----------------------------------------------------------------------
+
+class SoccerGame6HIndAgObsEnv16x11N3(SoccerGameIndAgObsEnv):
+    """IndAgObs 3v3 Soccer (16x11, 3 Green vs 3 Blue)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
         )

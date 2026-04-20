@@ -412,65 +412,39 @@ This works because Basketball (like Soccer and Collect) has NO doors, so door st
 
 ## Reward Structure (v6.5.0)
 
-### Reward Ladder
-
-The reward structure is designed as a continuous ladder from random initialization
-to scoring — each rung is reachable from the one below without requiring luck:
-
-```
-+0.01/step near ball  →  +0.1 on pickup  →  +0.05/step toward goal  →  +15.0 on score
-(always reachable)        (rare but reachable)  (follows naturally)       (follows naturally)
-```
-
-### Full Reward Table
+### Full Reward Table (v6.5.0)
 
 | Event | Reward | Condition |
 |-------|--------|-----------|
-| **Near ball (proximity)** | +0.01 / step | Agent within Manhattan dist ≤ 3 of ball, not carrying |
-| **Pickup ball** | +0.1 | Agent picks up ball; **only if last carrier was opponent or nobody** (provenance check) |
-| **Move toward goal** | +0.05 × (prev_dist − curr_dist) | While carrying; Manhattan dist to opponent's goal square |
-| **Move away from goal** | −0.05 × (curr_dist − prev_dist) | While carrying; ditto |
-| **First pass to teammate** | +0.1 | First DROP that transfers ball to a teammate (teleport pass) |
-| **Second consecutive pass (A→B→A)** | −0.2 | Penalises bounce passing that farms first-pass reward |
-| **Third+ consecutive pass** | 0 | Silent — prevents stacking negatives |
-| **Score basket** | +15.0 (scoring team) / −15.0 (opposing team) | `zero_sum=True`; walk into opponent's goal square while carrying |
-| **Timeout (no winner)** | −1.0 (all agents) | Applied when `step_count >= max_steps` and no team has won |
+| **Move toward goal** | +0.01 × Δdist | While **carrying**; Manhattan dist to opponent's goal square |
+| **Steal ball from opponent** | +0.3 | Agent takes ball from an opponent **currently carrying** it |
+| **Score basket** | +15 + (max_steps − step) × 0.05 | Walk into opponent's goal square while carrying |
+| **Opponent scores** | −(15 + time_bonus) | When `zero_sum=True` |
+| **Timeout (no winner)** | −1.0 (all agents) | Applied when `step_count >= max_steps` |
 
-### Why Each Layer Exists
+### Why Each Component Exists
 
-**Layer 1 — Ball provenance (`_ball_last_carrier_team`)**
+**Carrying-gated distance shaping**
 
-Without this check, agents discovered they could chain `PICKUP → DROP → PICKUP → DROP`
-in place to accumulate +0.1 per cycle with no risk. The provenance check records
-which team last carried each ball. The +0.1 pickup bonus is only paid when
-the ball comes from the opposing team or from the ground after an opponent dropped it.
+Only fires while the agent holds the ball and moves closer to the goal. Drop resets the
+signal — `pickup → drop → pickup` cycling yields zero reward. This removes the exploit
+where agents earned +0.1 per cycle by alternating pickup and drop in place.
 
-```python
-last_team = self._ball_last_carrier_team.get(ball_idx)
-if last_team is None or last_team != agent.team_index:
-    rewards[agent.index] += 0.1   # genuine first possession
-```
+**Steal reward (+0.3)**
 
-**Layer 2 — Timeout penalty (−1.0)**
+Encourages active defense and interception. Requires a live opponent in possession —
+cannot be farmed by picking up ground balls or passing between teammates.
 
-Without a timeout penalty, "do nothing" is a safe Nash equilibrium: nobody scores,
-nobody loses. The −1.0 penalty makes stalling actively bad, forcing agents to
-engage with the ball.
+**Time-efficiency scoring**
 
-**Layer 3 — Scoring reward (+15.0) and `zero_sum=True`**
+A gradient over the whole episode: scoring early is dramatically better than scoring late.
+At step 10 the bonus is ≈+14.5; at step 290 it is ≈+0.5. Agents are pushed to find the
+ball and advance immediately.
 
-At +1.0, the scoring signal was numerically dominated by the entropy bonus in MAPPO
-(`ent_coef=0.01 × H ≈ 0.02/step × 300 steps ≈ 6 entropy value` per episode).
-At +15.0, a single basket is worth 300 proximity-reward steps — unambiguously the
-dominant objective. `zero_sum=True` means the opposing team receives −15.0,
-creating genuine adversarial pressure.
+**Timeout penalty (−1.0)**
 
-**Layer 4 — Distance shaping (×0.05) and pass-chain cap**
-
-The carrying distance shaping was raised from 0.01 to 0.05 per column/row to
-make the gradient toward the goal strong enough to overcome random-walk noise.
-The pass-chain cap (−0.2 on second consecutive pass) prevents agents from
-discovering that A→B→A teleport-pass bouncing earns +0.2 per cycle for free.
+Without it, "do nothing" is a safe Nash equilibrium. The penalty makes stalling actively
+costly for both teams.
 
 ### Own-Goal Prevention
 

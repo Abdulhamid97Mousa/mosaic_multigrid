@@ -10,25 +10,24 @@ This document explains the improvements made to the **Soccer environment** in MO
 
 ### Reward Recalibration
 
-| Parameter | v6.4.0 | v6.5.0 | Reason |
-|-----------|--------|--------|--------|
-| Scoring reward | +1.0 | **+15.0** | Dominated by entropy bonus at +1.0 |
-| Timeout penalty | 0 | **−1.0** | Makes stalling actively bad |
-| `max_steps` (2v2, 1v1) | 200 | **300** | Consistent with AF; enables `buffer_size=2400` |
-| `zero_sum` | False | **True** | Scoring team +15.0, opposing team −15.0 |
-| Ball provenance (`_ball_last_carrier_team`) | absent | **present** | Blocks same-team pickup farming |
-| Pass-chain counter (`_ball_pass_count`) | absent | **present** | Penalises A→B→A bounce passing |
+| Parameter | v6.4.0 | v6.5.0 |
+|-----------|--------|--------|
+| Scoring reward | +1.0 | **+15 + (max_steps − step) × 0.05** |
+| Pickup reward | +0.1 (provenance-gated) | **removed** — root cause of pickup/drop hack |
+| Proximity reward | planned | **removed** — decoupled from possession |
+| Steal reward | 0 | **+0.3** (opponent carrying → stolen) |
+| Timeout penalty | 0 | **−1.0** |
+| `zero_sum` | False | **True** |
 
-### Reward Ladder
+### Reward Table (v6.5.0)
 
-```
-+0.05/step toward goal (carrying)  →  +15.0 on goal  →  −1.0 on timeout
-+0.1 on pickup (provenance-gated)
-```
-
-Soccer does **not** yet have the proximity reward (planned). The pickup + distance
-shaping is sufficient because the soccer field is smaller (16×11 vs 19×11) and
-the 2v2 format has fewer agents than basketball.
+| Event | Reward | Condition |
+|-------|--------|-----------|
+| **Move toward goal** | +0.01 × Δdist | While **carrying**; Manhattan dist to opponent's goal |
+| **Steal** | +0.3 | Take ball from carrying opponent |
+| **Goal** | +15 + (max_steps − step) × 0.05 | Walk into opponent's goal square while carrying |
+| **Opponent goal** | −(15 + time_bonus) | `zero_sum=True` |
+| **Timeout** | −1.0 | All agents when `max_steps` reached |
 
 ### Own-Goal Prevention
 

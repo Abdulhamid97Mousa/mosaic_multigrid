@@ -181,45 +181,103 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 All environments use v6.5.0 defaults: scoring +15.0, max_steps=300, zero_sum=True,
 ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity reward.
 
-### Soccer: 16×11 grid
+**50 environments** across 4 sports. Naming scheme:
+`MosaicMultiGrid-<Sport>-[Team-]<Format>-[ObsVariant-]v1`
+
+- **Sport:** `S` Soccer · `BB` Basketball · `AF` AmericanFootball · `C` Collect
+- **Team:** `G` Green-only · `B` Blue-only — omitted for symmetric matchups
+- **Format:** `NvM` (e.g. 1v0, 1v1, 2v2, 3v3)
+- **ObsVariant:** `IndAgObs` · `TeamObs` — omitted for solo (1v0 / 0v1) envs
+
+---
+
+### Soccer (S) — 16×11 grid
+
+<p align="center">
+  <img src="figures/envs_S.png" width="900" alt="All Soccer environments">
+</p>
 
 | Environment ID | Agents | Description |
 |----------------|--------|-------------|
-| `MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1` | 1 | Solo Green agent — curriculum pre-training |
-| `MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v1` | 1 | Solo Blue agent — curriculum pre-training |
-| `MosaicMultiGrid-Soccer-1v1-IndAgObs-v1` | 2 | 1v1 competitive, pure individual duel |
-| `MosaicMultiGrid-Soccer-2v2-IndAgObs-v1` | 4 | 2v2 competitive, independent 3×3 views |
-| `MosaicMultiGrid-Soccer-2v2-TeamObs-v1` | 4 | 2v2 + SMAC-style teammate positions/directions/has_ball |
+| `MosaicMultiGrid-S-G-1v0-v1` | 1 | Solo Green — curriculum pre-training |
+| `MosaicMultiGrid-S-B-0v1-v1` | 1 | Solo Blue — curriculum pre-training |
+| `MosaicMultiGrid-S-1v1-IndAgObs-v1` | 2 | 1v1 competitive |
+| `MosaicMultiGrid-S-2v2-IndAgObs-v1` | 4 | 2v2 competitive, independent 3×3 views |
+| `MosaicMultiGrid-S-2v2-TeamObs-v1` | 4 | 2v2 + SMAC teammate awareness |
+| `MosaicMultiGrid-S-3v3-IndAgObs-v1` | 6 | 3v3 competitive |
+| `MosaicMultiGrid-S-3v3-TeamObs-v1` | 6 | 3v3 + SMAC teammate awareness |
+| `MosaicMultiGrid-S-G-2v0-IndAgObs-v1` | 2 | 2 Green agents, cooperative |
+| `MosaicMultiGrid-S-G-2v0-TeamObs-v1` | 2 | 2 Green + teammate obs |
+| `MosaicMultiGrid-S-G-3v0-IndAgObs-v1` | 3 | 3 Green agents, cooperative |
+| `MosaicMultiGrid-S-G-3v0-TeamObs-v1` | 3 | 3 Green + teammate obs |
+| `MosaicMultiGrid-S-B-0v2-IndAgObs-v1` | 2 | 2 Blue agents, cooperative |
+| `MosaicMultiGrid-S-B-0v2-TeamObs-v1` | 2 | 2 Blue + teammate obs |
+| `MosaicMultiGrid-S-B-0v3-IndAgObs-v1` | 3 | 3 Blue agents, cooperative |
+| `MosaicMultiGrid-S-B-0v3-TeamObs-v1` | 3 | 3 Blue + teammate obs |
 
-### Basketball: 19×11 grid
+---
 
-| Environment ID | Agents | Description |
-|----------------|--------|-------------|
-| `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1` | 1 | Solo Green agent — curriculum pre-training |
-| `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v1` | 1 | Solo Blue agent — curriculum pre-training |
-| `MosaicMultiGrid-Basketball-3v3-IndAgObs-v1` | 6 | 3v3 competitive, independent 3×3 views |
-| `MosaicMultiGrid-Basketball-3v3-TeamObs-v1` | 6 | 3v3 + SMAC-style teammate awareness (N=2 per agent) |
+### Basketball (BB) — 19×11 grid
 
-### American Football: 16×11 grid
-
-| Environment ID | Agents | Description |
-|----------------|--------|-------------|
-| `MosaicMultiGrid-AmericanFootball-Solo-Green-IndAgObs-v1` | 1 | Solo Green agent — curriculum pre-training |
-| `MosaicMultiGrid-AmericanFootball-Solo-Blue-IndAgObs-v1` | 1 | Solo Blue agent — curriculum pre-training |
-| `MosaicMultiGrid-AmericanFootball-1v1-IndAgObs-v1` | 2 | 1v1 competitive, end zone touchdown scoring |
-| `MosaicMultiGrid-AmericanFootball-2v2-IndAgObs-v1` | 4 | 2v2 competitive, independent 3×3 views |
-| `MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v1` | 4 | 2v2 + SMAC-style teammate awareness |
-| `MosaicMultiGrid-AmericanFootball-3v3-IndAgObs-v1` | 6 | 3v3 competitive, independent 3×3 views |
-| `MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v1` | 6 | 3v3 + SMAC-style teammate awareness (N=2 per agent) |
-
-### Collect: 10×10 grid
+<p align="center">
+  <img src="figures/envs_BB.png" width="900" alt="All Basketball environments">
+</p>
 
 | Environment ID | Agents | Description |
 |----------------|--------|-------------|
-| `MosaicMultiGrid-Collect-IndAgObs-v1` | 3 | 3-agent individual competition |
-| `MosaicMultiGrid-Collect-1v1-IndAgObs-v1` | 2 | 1v1 team collection, 3 balls (no draws) |
-| `MosaicMultiGrid-Collect-2v2-IndAgObs-v1` | 4 | 2v2 team collection, 7 balls (no draws) |
-| `MosaicMultiGrid-Collect-2v2-TeamObs-v1` | 4 | 2v2 + SMAC-style teammate awareness |
+| `MosaicMultiGrid-BB-G-1v0-v1` | 1 | Solo Green — curriculum pre-training |
+| `MosaicMultiGrid-BB-B-0v1-v1` | 1 | Solo Blue — curriculum pre-training |
+| `MosaicMultiGrid-BB-1v1-IndAgObs-v1` | 2 | 1v1 competitive |
+| `MosaicMultiGrid-BB-1v1-TeamObs-v1` | 2 | 1v1 + teammate obs |
+| `MosaicMultiGrid-BB-2v2-IndAgObs-v1` | 4 | 2v2 competitive |
+| `MosaicMultiGrid-BB-2v2-TeamObs-v1` | 4 | 2v2 + teammate obs |
+| `MosaicMultiGrid-BB-3v3-IndAgObs-v1` | 6 | 3v3 competitive |
+| `MosaicMultiGrid-BB-3v3-TeamObs-v1` | 6 | 3v3 + teammate obs |
+| `MosaicMultiGrid-BB-G-2v0-IndAgObs-v1` | 2 | 2 Green, cooperative |
+| `MosaicMultiGrid-BB-G-2v0-TeamObs-v1` | 2 | 2 Green + teammate obs |
+| `MosaicMultiGrid-BB-G-3v0-IndAgObs-v1` | 3 | 3 Green, cooperative |
+| `MosaicMultiGrid-BB-G-3v0-TeamObs-v1` | 3 | 3 Green + teammate obs |
+| `MosaicMultiGrid-BB-B-0v2-IndAgObs-v1` | 2 | 2 Blue, cooperative |
+| `MosaicMultiGrid-BB-B-0v2-TeamObs-v1` | 2 | 2 Blue + teammate obs |
+| `MosaicMultiGrid-BB-B-0v3-IndAgObs-v1` | 3 | 3 Blue, cooperative |
+| `MosaicMultiGrid-BB-B-0v3-TeamObs-v1` | 3 | 3 Blue + teammate obs |
+
+---
+
+### American Football (AF) — 16×11 grid
+
+<p align="center">
+  <img src="figures/envs_AF.png" width="900" alt="All American Football environments">
+</p>
+
+| Environment ID | Agents | Description |
+|----------------|--------|-------------|
+| `MosaicMultiGrid-AF-G-1v0-v1` | 1 | Solo Green — curriculum pre-training |
+| `MosaicMultiGrid-AF-B-0v1-v1` | 1 | Solo Blue — curriculum pre-training |
+| `MosaicMultiGrid-AF-1v1-IndAgObs-v1` | 2 | 1v1 competitive |
+| `MosaicMultiGrid-AF-2v2-IndAgObs-v1` | 4 | 2v2 competitive, independent 3×3 views |
+| `MosaicMultiGrid-AF-2v2-TeamObs-v1` | 4 | 2v2 + SMAC teammate awareness |
+| `MosaicMultiGrid-AF-3v3-IndAgObs-v1` | 6 | 3v3 competitive |
+| `MosaicMultiGrid-AF-3v3-TeamObs-v1` | 6 | 3v3 + teammate obs |
+| `MosaicMultiGrid-AF-G-2v0-IndAgObs-v1` | 2 | 2 Green, cooperative |
+| `MosaicMultiGrid-AF-G-2v0-TeamObs-v1` | 2 | 2 Green + teammate obs |
+| `MosaicMultiGrid-AF-G-3v0-IndAgObs-v1` | 3 | 3 Green, cooperative |
+| `MosaicMultiGrid-AF-G-3v0-TeamObs-v1` | 3 | 3 Green + teammate obs |
+| `MosaicMultiGrid-AF-B-0v2-IndAgObs-v1` | 2 | 2 Blue, cooperative |
+| `MosaicMultiGrid-AF-B-0v2-TeamObs-v1` | 2 | 2 Blue + teammate obs |
+| `MosaicMultiGrid-AF-B-0v3-IndAgObs-v1` | 3 | 3 Blue, cooperative |
+| `MosaicMultiGrid-AF-B-0v3-TeamObs-v1` | 3 | 3 Blue + teammate obs |
+
+---
+
+### Collect (C) — 10×10 grid
+
+| Environment ID | Agents | Description |
+|----------------|--------|-------------|
+| `MosaicMultiGrid-C-IndAgObs-v1` | 3 | 3-agent individual competition |
+| `MosaicMultiGrid-C-1v1-IndAgObs-v1` | 2 | 1v1 team collection, 3 balls (no draws) |
+| `MosaicMultiGrid-C-2v2-IndAgObs-v1` | 4 | 2v2 team collection, 7 balls (no draws) |
+| `MosaicMultiGrid-C-2v2-TeamObs-v1` | 4 | 2v2 + SMAC-style teammate awareness |
 
 ### Critical Bugs Fixed
 
@@ -664,18 +722,18 @@ env = gym.make('MosaicMultiGrid-Soccer-2v2-IndAgObs-v1', max_steps=500)
 
 ### Action Enum Comparison
 
-| Action | Upstream (Fickinger 2020) | mosaic_multigrid v1 | **mosaic_multigrid v2 (this fork)** | multigrid-ini (Oguntola 2023) |
-|--------|---:|---:|---:|---:|
-| noop   | `still` | -- | **0** | -- |
-| still  | **0** | -- | -- | -- |
-| left   | 1 | **0** | **1** | **0** |
-| right  | 2 | **1** | **2** | **1** |
-| forward| 3 | **2** | **3** | **2** |
-| pickup | 4 | **3** | **4** | **3** |
-| drop   | 5 | **4** | **5** | **4** |
-| toggle | 6 | **5** | **6** | **5** |
-| done   | 7 | **6** | **7** | **6** |
-| **Total** | **8** | **7** | **8** | **7** |
+| Action | Upstream (Fickinger 2020) | **mosaic_multigrid (this fork)** | multigrid-ini (Oguntola 2023) |
+|--------|---:|---:|---:|
+| noop   | `still` | **0** | -- |
+| still  | **0** | -- | -- |
+| left   | 1 | **1** | **0** |
+| right  | 2 | **2** | **1** |
+| forward| 3 | **3** | **2** |
+| pickup | 4 | **4** | **3** |
+| drop   | 5 | **5** | **4** |
+| toggle | 6 | **6** | **5** |
+| done   | 7 | **7** | **6** |
+| **Total** | **8** | **8** | **7** |
 
 **Why `noop` was added (AEC + Parallel API compatibility):**
 
