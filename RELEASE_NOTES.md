@@ -4,6 +4,74 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [6.6.0] - 2026-05-07
+
+### Overview
+
+Adds the missing "find-the-ball" reward gradient across all three sport
+environments. Symmetric ball-approach shaping fires when an agent is not
+carrying any ball, mirroring the existing carrying-toward-goal shaping.
+This fixes the post-goal collapse (P(2nd pickup | 1st goal) ~52–68%)
+by giving the policy a navigation gradient during ball-finding phases.
+
+### New Features
+
+#### Symmetric ball-approach shaping (all sport environments)
+
+Added `+0.01 × Δdist` reward for agents **not carrying** a ball, computed
+toward the nearest loose ball on the grid. Mirrors the existing
+`+0.01 × Δdist` reward toward the goal while carrying.
+
+| Phase | Before 6.6.0 | 6.6.0+ |
+|---|---|---|
+| Carrying | gradient toward goal ✓ | gradient toward goal (unchanged) |
+| Not carrying | no gradient ✗ | gradient toward loose ball ✓ |
+
+The shaping block is now structurally identical across Soccer, Basketball,
+and American Football — one mental model applies to all three.
+
+### Consistency Refactor
+
+#### American Football: 1D → 2D distance shaping
+
+`AmericanFootballEnv` previously used 1D x-only shaping via
+`_prev_x: dict[int, int]` and `_target_endzone_x()`. Upgraded to 2D
+Manhattan distance matching Soccer and Basketball:
+
+- `_prev_x` → `_prev_pos: dict[int, tuple[int, int]]`
+- `_target_endzone_x()` → `_target_endzone_pos()` returning `(target_x, height // 2)`
+- Carrying reward: `0.01 × (prev_manhattan − curr_manhattan)`
+
+Agents now get a small reward for converging to the centre row while
+carrying, in addition to horizontal progress toward the end zone.
+Scoring mechanics are unchanged (triggers on any cell of the end-zone column).
+
+### Bug Fixes
+
+#### Basketball base-class latent crash
+
+`BasketballGameEnv._handle_pickup` (base class) wrote to
+`self.steals_completed` which is only initialised in `BasketballGameIndAgObsEnv`.
+Direct instantiation of the base class raised `AttributeError` on first steal.
+Tracking removed from the base class — now matches `SoccerGameEnv` which
+has always been silent in the base steal.
+
+### Cleanup
+
+Removed `_prev_carrying: dict[int, bool]` from all three sport environments.
+The variable was written every step but never read — a remnant of a
+pickup-bonus term removed in 6.5.0.
+
+### Backward Compatibility
+
+- Environment Gymnasium IDs unchanged
+- Observation spaces unchanged
+- `reward_shaping=False` still produces sparse goal-only rewards
+- Checkpoints from 6.5.0 remain loadable but are expected to underperform
+  fresh 6.6.0 training due to the new ball-approach gradient
+
+---
+
 ## [6.5.0] - 2026-04-18
 
 ### Overview

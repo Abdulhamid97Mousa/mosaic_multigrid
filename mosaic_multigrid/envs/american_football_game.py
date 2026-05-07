@@ -78,8 +78,7 @@ class AmericanFootballEnv(MultiGridEnv):
         self.team_scores: dict[int, int] = {}
 
         # Reward shaping state (per-agent tracking)
-        self._prev_carrying: dict[int, bool] = {}
-        self._prev_x: dict[int, int] = {}
+        self._prev_pos: dict[int, tuple[int, int]] = {}
 
         agents_index = agents_index or []
         agents = [
@@ -143,14 +142,24 @@ class AmericanFootballEnv(MultiGridEnv):
         """Override to use American Football-style rendering."""
         return render_american_football(self, tile_size)
 
-    def _target_endzone_x(self, agent: Agent) -> int:
-        """Return the x-column of the end zone where this agent scores."""
-        # team_index=0 (Green) scores at column width-2 (Blue's end zone)
-        # team_index=1 (Blue) scores at column 1 (Green's end zone)
-        if agent.team_index == 0:
-            return self.width - 2
-        else:
-            return 1
+    def _target_endzone_pos(self, agent: Agent) -> tuple[int, int]:
+        """Return (x, y) target for shaping rewards — centre of the scoring end zone.
+
+        The end zone spans the full column height; (target_x, height // 2) is the
+        geometric centre. Y movement toward the middle gets a small reward while
+        carrying, but scoring still triggers on any cell of the end-zone column.
+        """
+        target_x = self.width - 2 if agent.team_index == 0 else 1
+        return target_x, self.height // 2
+
+    def _find_loose_ball_pos(self) -> tuple[int, int] | None:
+        """Return (x, y) of the first loose ball on the grid, or None if all balls are carried."""
+        for y in range(self.height):
+            for x in range(self.width):
+                obj = self.grid.get(x, y)
+                if obj is not None and obj.type.value == 'ball':
+                    return (x, y)
+        return None
 
     def reset(self, **kwargs):
         """Reset with team score and reward shaping tracking."""
@@ -169,8 +178,7 @@ class AmericanFootballEnv(MultiGridEnv):
 
         # Initialize reward shaping state
         for agent in self.agents:
-            self._prev_carrying[agent.index] = agent.state.carrying is not None
-            self._prev_x[agent.index] = int(agent.state.pos[0])
+            self._prev_pos[agent.index] = (int(agent.state.pos[0]), int(agent.state.pos[1]))
 
         # Ball provenance is empty at reset. Ground balls have no last
         # carrier, so the first pickup of any ball earns the +0.1 bonus
@@ -321,23 +329,30 @@ class AmericanFootballEnv(MultiGridEnv):
         if self.reward_shaping:
             # +0.3 steal bonus — agents that took the ball from a carrying opponent
             steal_set = {s["stealer"] for s in self.steals_completed[steals_before:]}
+            loose_ball = self._find_loose_ball_pos()
 
             for agent in self.agents:
                 carrying = agent.state.carrying is not None
-                curr_x = int(agent.state.pos[0])
-                prev_x = self._prev_x.get(agent.index, curr_x)
-                target_x = self._target_endzone_x(agent)
+                cx, cy = int(agent.state.pos[0]), int(agent.state.pos[1])
+                px, py = self._prev_pos.get(agent.index, (cx, cy))
+                gx, gy = self._target_endzone_pos(agent)
 
                 if agent.index in steal_set:
                     rewards[agent.index] += 0.3
 
-                # +0.01 × Δx toward goal, only while carrying (cannot be hacked by drop)
+                # +0.01 × Δdist toward the next objective:
+                # carrying → end-zone centre;  not carrying → loose ball
                 if carrying:
-                    dx = curr_x - prev_x if target_x > prev_x else prev_x - curr_x
-                    rewards[agent.index] += 0.01 * dx
+                    prev_dist = abs(px - gx) + abs(py - gy)
+                    curr_dist = abs(cx - gx) + abs(cy - gy)
+                    rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
+                elif loose_ball is not None:
+                    bx, by = loose_ball
+                    prev_dist = abs(px - bx) + abs(py - by)
+                    curr_dist = abs(cx - bx) + abs(cy - by)
+                    rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
 
-                self._prev_carrying[agent.index] = carrying
-                self._prev_x[agent.index] = curr_x
+                self._prev_pos[agent.index] = (cx, cy)
 
         # ---- Telemetry (per-agent info injection) ----
         for agent in self.agents:

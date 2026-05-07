@@ -326,7 +326,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         self.goal_scored_by: list[dict] = []
         self.passes_completed: list[dict] = []
         self.steals_completed: list[dict] = []
-        self._prev_carrying: dict[int, bool] = {}
         self._prev_pos: dict[int, tuple[int, int]] = {}
         # Ball provenance (v6.5.0): maps ball_index -> last carrier team.
         # Blocks the same-team pass-loop reward-hacking exploit. See
@@ -344,6 +343,15 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                 return gpos
         return self.goal_pos[0]
 
+    def _find_loose_ball_pos(self) -> tuple[int, int] | None:
+        """Return (x, y) of the first loose ball on the grid, or None if all balls are carried."""
+        for y in range(self.height):
+            for x in range(self.width):
+                obj = self.grid.get(x, y)
+                if obj is not None and obj.type.value == 'ball':
+                    return (x, y)
+        return None
+
     def reset(self, **kwargs):
         """Reset with team score, cooldown, and reward shaping tracking."""
         obs, info = super().reset(**kwargs)
@@ -358,7 +366,6 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
             agent.action_cooldown = 0
 
         for agent in self.agents:
-            self._prev_carrying[agent.index] = agent.state.carrying is not None
             self._prev_pos[agent.index] = (int(agent.state.pos[0]), int(agent.state.pos[1]))
 
         # Ball provenance is empty at reset. First pickup of any ball earns
@@ -422,6 +429,7 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         if self.reward_shaping:
             # +0.3 steal bonus — agents that took the ball from a carrying opponent
             steal_set = {s["stealer"] for s in self.steals_completed[steals_before:]}
+            loose_ball = self._find_loose_ball_pos()
 
             for agent in self.agents:
                 carrying = agent.state.carrying is not None
@@ -432,13 +440,18 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
                 if agent.index in steal_set:
                     rewards[agent.index] += 0.3
 
-                # +0.01 × Δdist toward goal, only while carrying (cannot be hacked by drop)
+                # +0.01 × Δdist toward the next objective:
+                # carrying → goal cell;  not carrying → loose ball
                 if carrying:
                     prev_dist = abs(px - gx) + abs(py - gy)
                     curr_dist = abs(cx - gx) + abs(cy - gy)
                     rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
+                elif loose_ball is not None:
+                    bx, by = loose_ball
+                    prev_dist = abs(px - bx) + abs(py - by)
+                    curr_dist = abs(cx - bx) + abs(cy - by)
+                    rewards[agent.index] += 0.01 * (prev_dist - curr_dist)
 
-                self._prev_carrying[agent.index] = carrying
                 self._prev_pos[agent.index] = (cx, cy)
 
         # ---- Telemetry ----
