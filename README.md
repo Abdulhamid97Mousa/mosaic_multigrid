@@ -467,7 +467,7 @@ direction = state % 100         # 1 (down)
 - Enables reactive defense strategies without memory
 - Faster training, better decision-making
 
-See:**See [PARTIAL_OBSERVABILITY.md](PARTIAL_OBSERVABILITY.md) for detailed visual diagrams and comparison with INI multigrid.**
+**See [PARTIAL_OBSERVABILITY.md](PARTIAL_OBSERVABILITY.md) for detailed visual diagrams and comparison with INI multigrid.**
 
 ### Reproducibility
 

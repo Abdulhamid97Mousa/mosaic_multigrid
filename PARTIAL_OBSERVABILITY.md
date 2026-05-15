@@ -7,7 +7,7 @@ The sport environments in mosaic_multigrid are instances of a **Decentralised Pa
 A Dec-POMDP is defined by the tuple
 
 $$
-\langle\, M,\ \mathcal{S},\ \{\mathcal{A}_i\}_{i=1}^{M},\ \{\Omega_i\}_{i=1}^{M},\ \mathcal{T},\ \mathcal{O},\ r,\ \gamma\, \rangle,
+\langle\ M,\ \mathcal{S},\ \{\mathcal{A}_i\}_{i=1}^{M},\ \{\Omega_i\}_{i=1}^{M},\ \mathcal{T},\ \mathcal{O},\ r,\ \gamma\, \rangle,
 $$
 
 where $M$ is the number of agents, $\mathcal{S}$ is the state space, $\mathcal{A}_i$ is the action space of agent $i$, $\Omega_i$ is its local observation space, $\mathcal{T}: \mathcal{S}\times\boldsymbol{\mathcal{A}} \to \Delta(\mathcal{S})$ is the transition function, $\mathcal{O}: \mathcal{S}\times\boldsymbol{\mathcal{A}} \to \Delta(\boldsymbol{\Omega})$ is the joint observation function, $r: \mathcal{S}\times\boldsymbol{\mathcal{A}} \to \mathbb{R}$ is the shared team reward, and $\gamma\in[0,1]$ is the discount factor. The joint action and observation spaces are $\boldsymbol{\mathcal{A}}=\prod_i \mathcal{A}_i$ and $\boldsymbol{\Omega}=\prod_i \Omega_i$.
