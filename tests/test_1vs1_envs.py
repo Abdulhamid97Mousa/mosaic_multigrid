@@ -175,9 +175,9 @@ class TestSoccer1vs1:
         env.close()
 
     @pytest.mark.parametrize("env_id,n_agents", [
-        ("MosaicMultiGrid-Collect-1vs1-v0", 2),
-        ("MosaicMultiGrid-Collect-1vs1-IndAgObs-v0", 2),
-        ("MosaicMultiGrid-Soccer-1vs1-IndAgObs-v0", 2),
+        ("MosaicMultiGrid-C-1v1-IndAgObs-v1", 2),
+        ("MosaicMultiGrid-C-1v1-IndAgObs-v1", 2),
+        ("MosaicMultiGrid-S-1v1-IndAgObs-v1", 2),
     ])
     def test_1vs1_gym_make(self, env_id, n_agents):
         """All 1vs1 environments should be creatable via gym.make()."""
@@ -187,9 +187,9 @@ class TestSoccer1vs1:
         env.close()
 
     @pytest.mark.parametrize("env_id", [
-        "MosaicMultiGrid-Collect-2vs2-v0",
-        "MosaicMultiGrid-Collect-2vs2-IndAgObs-v0",
-        "MosaicMultiGrid-Collect-2vs2-TeamObs-v0",
+        "MosaicMultiGrid-C-2v2-IndAgObs-v1",
+        "MosaicMultiGrid-C-2v2-IndAgObs-v1",
+        "MosaicMultiGrid-C-2v2-TeamObs-v1",
     ])
     def test_collect_2vs2_renamed(self, env_id):
         """Renamed Collect-2vs2 environments should be creatable via gym.make()."""
@@ -199,6 +199,6 @@ class TestSoccer1vs1:
         env.close()
 
     def test_old_collect2vs2_name_removed(self):
-        """Old 'Collect2vs2' (no hyphen) names should NOT be registered."""
+        """Old 'Collect2vs2' (no hyphen, v0) names should NOT be registered."""
         with pytest.raises(gym.error.NameNotFound):
             gym.make("MosaicMultiGrid-Collect2vs2-IndAgObs-v0")

@@ -17,12 +17,18 @@ import numpy as np
 import pytest
 
 from mosaic_multigrid.envs import (
-    SoccerGame4HEnhancedEnv16x11N2,
-    CollectGame4HEnhancedEnv10x10N2,
-    CollectGame3HEnhancedEnv10x10N3,
+    SoccerGame4HIndAgObsEnv16x11N2,
+    CollectGame4HIndAgObsEnv10x10N2,
+    CollectGame3HIndAgObsEnv10x10N3,
     SoccerTeamObsEnv,
-    Collect2vs2TeamObsEnv,
+    Collect2v2TeamObsEnv,
 )
+
+# v6.5.0+: Enhanced suffix renamed to IndAgObs; "vs" → "v" in wrapper names
+SoccerGame4HEnhancedEnv16x11N2  = SoccerGame4HIndAgObsEnv16x11N2
+CollectGame4HEnhancedEnv10x10N2 = CollectGame4HIndAgObsEnv10x10N2
+CollectGame3HEnhancedEnv10x10N3 = CollectGame3HIndAgObsEnv10x10N3
+Collect2vs2TeamObsEnv           = Collect2v2TeamObsEnv
 from mosaic_multigrid.wrappers import TeamObsWrapper
 from mosaic_multigrid.core.constants import Type
 
@@ -209,8 +215,8 @@ class TestRegisteredTeamObsEnvs:
     """Test TeamObs environments via gymnasium.make()."""
 
     @pytest.mark.parametrize("env_id,n_agents", [
-        ("MosaicMultiGrid-Soccer-2vs2-TeamObs-v0", 4),
-        ("MosaicMultiGrid-Collect-2vs2-TeamObs-v0", 4),
+        ("MosaicMultiGrid-S-2v2-TeamObs-v1", 4),
+        ("MosaicMultiGrid-C-2v2-TeamObs-v1", 4),
     ])
     def test_gym_make(self, env_id, n_agents):
         """Environment should be creatable via gym.make()."""
@@ -231,7 +237,7 @@ class TestRegisteredTeamObsEnvs:
 
     def test_soccer_teamobs_render(self):
         """Soccer TeamObs should render RGB frames."""
-        env = gym.make("MosaicMultiGrid-Soccer-2vs2-TeamObs-v0", render_mode="rgb_array")
+        env = gym.make("MosaicMultiGrid-S-2v2-TeamObs-v1", render_mode="rgb_array")
         env.reset(seed=42)
         frame = env.render()
         assert isinstance(frame, np.ndarray)

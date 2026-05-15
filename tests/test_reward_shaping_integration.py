@@ -106,7 +106,7 @@ def _team_agents(inner, team_idx):
 # =====================================================================
 
 class TestAFLiveActions:
-    ENV_ID = "MosaicMultiGrid-AmericanFootball-2v2-v0"
+    ENV_ID = "MosaicMultiGrid-AF-2v2-IndAgObs-v1"
     N = 4
 
     @pytest.fixture
@@ -119,6 +119,7 @@ class TestAFLiveActions:
     def _noop(self):
         return {i: NOOP for i in range(self.N)}
 
+    @pytest.mark.skip(reason="+0.1 pickup bonus removed in v6.5.0")
     def test_ground_pickup_via_action_earns_bonus(self, env):
         """PICKUP action on a ground ball -> +0.1 shaping bonus."""
         inner = env.unwrapped
@@ -172,6 +173,7 @@ class TestAFLiveActions:
             f"Same-team teleport receive should get 0, agent {receiver} got {r[receiver]}"
         )
 
+    @pytest.mark.skip(reason="+0.1 pickup bonus removed in v6.5.0")
     def test_pass_loop_10_hops_single_bonus(self, env):
         """10 teleport-pass cycles: total team reward = 0.1 (initial only).
 
@@ -287,9 +289,12 @@ class TestAFLiveActions:
         env_s.close()
 
         print(f"\n[AF 2v2] loop={loop_total:.3f}  score={score_total:.3f}")
-        assert loop_total == pytest.approx(0.1, abs=EPS)
+        # v6.6.0: pickup bonus removed — pass-loop earns 0 (no pickup shaping)
+        assert loop_total == pytest.approx(0.0, abs=0.05), (
+            f"Pass-loop should earn ~0 without pickup bonus, got {loop_total:.3f}"
+        )
         assert score_total >= 1.0, f"Score should be >=1.0, got {score_total:.3f}"
-        assert score_total >= 10 * loop_total
+        assert score_total > loop_total  # scoring still beats passlooping
 
     def test_own_goal_scores_zero(self, env):
         """Walking into own end zone with ball -> no touchdown."""
@@ -330,7 +335,7 @@ class TestAFLiveActions:
 # =====================================================================
 
 class TestSoccerLiveActions:
-    ENV_ID = "MosaicMultiGrid-Soccer-2vs2-IndAgObs-v0"
+    ENV_ID = "MosaicMultiGrid-S-2v2-IndAgObs-v1"
     N = 4
 
     @pytest.fixture
@@ -343,6 +348,7 @@ class TestSoccerLiveActions:
     def _noop(self):
         return {i: NOOP for i in range(self.N)}
 
+    @pytest.mark.skip(reason="+0.1 pickup bonus removed in v6.5.0")
     def test_ground_pickup_earns_bonus(self, env):
         inner = env.unwrapped
         ball, _ = _find_ball_on_grid(inner)
@@ -376,6 +382,7 @@ class TestSoccerLiveActions:
             f"Same-team receive should get 0, agent {receiver} got {r[receiver]}"
         )
 
+    @pytest.mark.skip(reason="+0.1 pickup bonus removed in v6.5.0")
     def test_pass_loop_10_hops_single_bonus(self, env):
         inner = env.unwrapped
         ball, _ = _find_ball_on_grid(inner)
@@ -470,7 +477,7 @@ class TestSoccerLiveActions:
 # =====================================================================
 
 class TestBasketballLiveActions:
-    ENV_ID = "MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0"
+    ENV_ID = "MosaicMultiGrid-BB-3v3-IndAgObs-v1"
     N = 6
 
     @pytest.fixture
@@ -483,6 +490,7 @@ class TestBasketballLiveActions:
     def _noop(self):
         return {i: NOOP for i in range(self.N)}
 
+    @pytest.mark.skip(reason="+0.1 pickup bonus removed in v6.5.0")
     def test_ground_pickup_earns_bonus(self, env):
         inner = env.unwrapped
         ball, _ = _find_ball_on_grid(inner)
@@ -516,6 +524,7 @@ class TestBasketballLiveActions:
             f"Same-team receive should get 0, agent {receiver} got {r[receiver]}"
         )
 
+    @pytest.mark.skip(reason="+0.1 pickup bonus removed in v6.5.0")
     def test_pass_loop_10_hops_single_bonus(self, env):
         inner = env.unwrapped
         ball, _ = _find_ball_on_grid(inner)

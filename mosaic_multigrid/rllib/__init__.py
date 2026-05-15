@@ -12,7 +12,7 @@ Usage::
 
     # Module-level creator for Ray worker picklability
     from ray.tune.registry import register_env
-    register_env('MosaicMultiGrid-Soccer-v0', lambda cfg: env_cls(**cfg))
+    register_env('MosaicMultiGrid-S-2v2-IndAgObs-v1', lambda cfg: env_cls(**cfg))
 """
 from __future__ import annotations
 

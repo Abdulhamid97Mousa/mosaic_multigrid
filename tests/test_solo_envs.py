@@ -27,28 +27,28 @@ SEED = 42
 
 @pytest.fixture
 def soccer_solo_green_v3():
-    env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=3)
+    env = gym.make('MosaicMultiGrid-S-G-1v0-v1', view_size=3)
     yield env
     env.close()
 
 
 @pytest.fixture
 def soccer_solo_green_v7():
-    env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)
+    env = gym.make('MosaicMultiGrid-S-G-1v0-v1', view_size=7)
     yield env
     env.close()
 
 
 @pytest.fixture
 def soccer_solo_blue_v3():
-    env = gym.make('MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0', view_size=3)
+    env = gym.make('MosaicMultiGrid-S-B-0v1-v1', view_size=3)
     yield env
     env.close()
 
 
 @pytest.fixture
 def soccer_solo_blue_v7():
-    env = gym.make('MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0', view_size=7)
+    env = gym.make('MosaicMultiGrid-S-B-0v1-v1', view_size=7)
     yield env
     env.close()
 
@@ -288,8 +288,8 @@ class TestSeeding:
     """Test that seeding produces reproducible results."""
 
     def test_reproducible_reset_green(self):
-        env1 = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=3)
-        env2 = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=3)
+        env1 = gym.make('MosaicMultiGrid-S-G-1v0-v1', view_size=3)
+        env2 = gym.make('MosaicMultiGrid-S-G-1v0-v1', view_size=3)
 
         obs1, _ = env1.reset(seed=SEED)
         obs2, _ = env2.reset(seed=SEED)
@@ -301,8 +301,8 @@ class TestSeeding:
         env2.close()
 
     def test_reproducible_reset_blue(self):
-        env1 = gym.make('MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0', view_size=3)
-        env2 = gym.make('MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0', view_size=3)
+        env1 = gym.make('MosaicMultiGrid-S-B-0v1-v1', view_size=3)
+        env2 = gym.make('MosaicMultiGrid-S-B-0v1-v1', view_size=3)
 
         obs1, _ = env1.reset(seed=SEED)
         obs2, _ = env2.reset(seed=SEED)
@@ -318,27 +318,27 @@ class TestBasketballSolo:
     """Basic tests for Basketball solo environments."""
 
     def test_basketball_solo_green_creation(self):
-        env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0', view_size=3)
+        env = gym.make('MosaicMultiGrid-BB-G-1v0-v1', view_size=3)
         obs, _ = env.reset(seed=SEED)
         assert len(obs) == 1
         assert obs[0]['image'].shape == (3, 3, 3)
         env.close()
 
     def test_basketball_solo_blue_creation(self):
-        env = gym.make('MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0', view_size=3)
+        env = gym.make('MosaicMultiGrid-BB-B-0v1-v1', view_size=3)
         obs, _ = env.reset(seed=SEED)
         assert len(obs) == 1
         assert obs[0]['image'].shape == (3, 3, 3)
         env.close()
 
     def test_basketball_solo_green_view_size_7(self):
-        env = gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0', view_size=7)
+        env = gym.make('MosaicMultiGrid-BB-G-1v0-v1', view_size=7)
         obs, _ = env.reset(seed=SEED)
         assert obs[0]['image'].shape == (7, 7, 3)
         env.close()
 
     def test_basketball_solo_blue_view_size_7(self):
-        env = gym.make('MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0', view_size=7)
+        env = gym.make('MosaicMultiGrid-BB-B-0v1-v1', view_size=7)
         obs, _ = env.reset(seed=SEED)
         assert obs[0]['image'].shape == (7, 7, 3)
         env.close()

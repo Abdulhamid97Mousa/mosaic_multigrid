@@ -337,11 +337,13 @@ class SoccerGameIndAgObsEnv(SoccerGameEnv):
         return render_fifa(self, tile_size)
 
     def _target_goal_pos(self, agent) -> list[int]:
-        """Return the (x, y) goal position where this agent scores."""
-        for gpos, gidx in zip(self.goal_pos, self.goal_index):
-            if gidx != agent.team_index:
-                return gpos
-        return self.goal_pos[0]
+        """Return the centre goal cell for reward shaping (middle row of goal arc)."""
+        opp_goals = [gpos for gpos, gidx in zip(self.goal_pos, self.goal_index)
+                     if gidx != agent.team_index]
+        if not opp_goals:
+            return self.goal_pos[0]
+        opp_goals_sorted = sorted(opp_goals, key=lambda p: p[1])
+        return opp_goals_sorted[len(opp_goals_sorted) // 2]
 
     def _find_loose_ball_pos(self) -> tuple[int, int] | None:
         """Return (x, y) of the first loose ball on the grid, or None if all balls are carried."""
@@ -598,8 +600,8 @@ class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             size=None,
             width=16,  # FIFA-style width
             height=11,  # FIFA-style height
-            goal_pos=[[1, 5], [14, 5]],  # Goals at vertical center
-            goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]],  # 3-cell goals at y=4,5,6
+            goal_index=[1,1,1,2,2,2],
             num_balls=[1],
             agents_index=[1, 1, 2, 2],  # 2v2 teams
             balls_index=[0],  # Wildcard ball
@@ -633,8 +635,8 @@ class SoccerGame2HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
             size=None,
             width=16,  # FIFA-style width
             height=11,  # FIFA-style height
-            goal_pos=[[1, 5], [14, 5]],  # Goals at vertical center
-            goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]],  # 3-cell goals at y=4,5,6
+            goal_index=[1,1,1,2,2,2],
             num_balls=[1],
             agents_index=[1, 2],  # 1v1 teams (Green vs Red)
             balls_index=[0],  # Wildcard ball
@@ -660,7 +662,7 @@ class SoccerSoloGreenIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     remapping.
 
     view_size can be overridden at make time:
-        ``gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v0', view_size=7)``
+        ``gym.make('MosaicMultiGrid-S-G-1v0-v1', view_size=7)``
     """
 
     def __init__(self, **kwargs):
@@ -670,8 +672,8 @@ class SoccerSoloGreenIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
             size=None,
             width=16,
             height=11,
-            goal_pos=[[1, 5], [14, 5]],
-            goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]],
+            goal_index=[1,1,1,2,2,2],
             num_balls=[1],
             agents_index=[1],  # Solo Green (team 1)
             balls_index=[0],
@@ -693,7 +695,7 @@ class SoccerSoloBlueIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     checkpoint key must be remapped from ``agent_0`` to ``agent_1``.
 
     view_size can be overridden at make time:
-        ``gym.make('MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v0', view_size=7)``
+        ``gym.make('MosaicMultiGrid-S-B-0v1-v1', view_size=7)``
     """
 
     def __init__(self, **kwargs):
@@ -703,8 +705,8 @@ class SoccerSoloBlueIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
             size=None,
             width=16,
             height=11,
-            goal_pos=[[1, 5], [14, 5]],
-            goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]],
+            goal_index=[1,1,1,2,2,2],
             num_balls=[1],
             agents_index=[2],  # Solo Blue (team 2)
             balls_index=[0],
@@ -724,7 +726,7 @@ class SoccerGreen2v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
-            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
             num_balls=[1], agents_index=[1, 1], balls_index=[0],
             zero_sum=False, **kwargs,
         )
@@ -737,7 +739,7 @@ class SoccerBlue0v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
-            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
             num_balls=[1], agents_index=[2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )
@@ -750,7 +752,7 @@ class SoccerGreen3v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
-            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
             num_balls=[1], agents_index=[1, 1, 1], balls_index=[0],
             zero_sum=False, **kwargs,
         )
@@ -763,7 +765,7 @@ class SoccerBlue0v3IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
-            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
             num_balls=[1], agents_index=[2, 2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )
@@ -780,7 +782,7 @@ class SoccerGame6HIndAgObsEnv16x11N3(SoccerGameIndAgObsEnv):
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
-            goal_pos=[[1, 5], [14, 5]], goal_index=[1, 2],
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
             num_balls=[1], agents_index=[1, 1, 1, 2, 2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )

@@ -73,6 +73,11 @@ from ..wrappers import TeamObsWrapper, GlobalObsWrapper
 # -----------------------------------------------------------------------
 
 # Soccer
+class Soccer1v1TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerGame2HIndAgObsEnv16x11N2.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerGame2HIndAgObsEnv16x11N2(**kwargs))
+
 class SoccerTeamObsEnv(TeamObsWrapper):
     metadata = SoccerGame4HIndAgObsEnv16x11N2.metadata
     def __init__(self, **kwargs):
@@ -191,6 +196,7 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-S-B-0v1-v1':           (SoccerSoloBlueIndAgObsEnv16x11,    {}),
     # Symmetric competitive
     'MosaicMultiGrid-S-1v1-IndAgObs-v1':    (SoccerGame2HIndAgObsEnv16x11N2,    {}),
+    'MosaicMultiGrid-S-1v1-TeamObs-v1':     (Soccer1v1TeamObsEnv,               {}),
     'MosaicMultiGrid-S-2v2-IndAgObs-v1':    (SoccerGame4HIndAgObsEnv16x11N2,    {}),
     'MosaicMultiGrid-S-2v2-TeamObs-v1':     (SoccerTeamObsEnv,                  {}),
     'MosaicMultiGrid-S-3v3-IndAgObs-v1':    (SoccerGame6HIndAgObsEnv16x11N3,    {}),

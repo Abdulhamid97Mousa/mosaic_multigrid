@@ -8,7 +8,7 @@ the STATE channel (values 100-103 indicate carrying + direction).
 import numpy as np
 import pytest
 
-from mosaic_multigrid.envs import SoccerGame4HEnv10x15N2, CollectGame3HEnv10x10N3
+from mosaic_multigrid.envs import SoccerGame4HIndAgObsEnv16x11N2, CollectGame3HIndAgObsEnv10x10N3
 from mosaic_multigrid.core.constants import Type, Color
 from mosaic_multigrid.core.world_object import Ball
 
@@ -18,7 +18,7 @@ class TestBallCarryingObservability:
 
     def test_agent_without_ball_encoded_correctly(self):
         """Agent WITHOUT ball should have STATE = direction (0-3)."""
-        env = SoccerGame4HEnv10x15N2()
+        env = SoccerGame4HIndAgObsEnv16x11N2()
         obs, _ = env.reset(seed=42)
 
         # Agent 0 should NOT have ball initially
@@ -36,7 +36,7 @@ class TestBallCarryingObservability:
 
     def test_agent_with_ball_encoded_with_carrying_flag(self):
         """Agent WITH ball should have STATE = 100 + direction."""
-        env = SoccerGame4HEnv10x15N2()
+        env = SoccerGame4HIndAgObsEnv16x11N2()
         obs, _ = env.reset(seed=42)
 
         # Find a ball and give it to Agent 0
@@ -75,7 +75,7 @@ class TestBallCarryingObservability:
 
     def test_agent_can_observe_other_agent_carrying_ball(self):
         """Test that Agent 0 can SEE when Agent 1 is carrying ball."""
-        env = SoccerGame4HEnv10x15N2()
+        env = SoccerGame4HIndAgObsEnv16x11N2()
         obs, _ = env.reset(seed=42)
 
         # Find ball and give to Agent 1
@@ -174,7 +174,7 @@ class TestBallCarryingObservability:
 
     def test_state_channel_preserves_direction(self):
         """Verify that STATE channel encodes BOTH direction AND carrying."""
-        env = SoccerGame4HEnv10x15N2()
+        env = SoccerGame4HIndAgObsEnv16x11N2()
         obs, _ = env.reset(seed=42)
 
         # Find ball
@@ -216,7 +216,7 @@ class TestBallCarryingObservability:
 
     def test_collect_game_also_supports_ball_carrying_encoding(self):
         """Collect game should also support ball carrying observability."""
-        env = CollectGame3HEnv10x10N3()
+        env = CollectGame3HIndAgObsEnv10x10N3()
         obs, _ = env.reset(seed=42)
 
         # Find a ball
@@ -249,7 +249,7 @@ class TestBallCarryingObservability:
 
     def test_backward_compatibility_with_non_ball_carrying(self):
         """Verify that non-ball objects don't trigger carrying flag."""
-        env = SoccerGame4HEnv10x15N2()
+        env = SoccerGame4HIndAgObsEnv16x11N2()
         obs, _ = env.reset(seed=42)
 
         # Agent carrying nothing

@@ -17,7 +17,7 @@ import pytest
 import mosaic_multigrid.envs
 from mosaic_multigrid.envs import (
     BasketballGame6HIndAgObsEnv19x11N3,
-    Basketball3vs3TeamObsEnv,
+    Basketball3v3TeamObsEnv,
 )
 
 SEED = 42
@@ -26,14 +26,14 @@ EXPECTED_EXTRA_KEYS = {'teammate_positions', 'teammate_directions', 'teammate_ha
 
 @pytest.fixture
 def env_ind():
-    env = gym.make('MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0')
+    env = gym.make('MosaicMultiGrid-BB-3v3-IndAgObs-v1')
     yield env
     env.close()
 
 
 @pytest.fixture
 def env_team():
-    env = gym.make('MosaicMultiGrid-Basketball-3vs3-TeamObs-v0')
+    env = gym.make('MosaicMultiGrid-BB-3v3-TeamObs-v1')
     yield env
     env.close()
 
@@ -156,7 +156,7 @@ class TestBasketballRendering:
     """Court rendering tests."""
 
     def test_render_returns_rgb_array(self):
-        env = gym.make('MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0',
+        env = gym.make('MosaicMultiGrid-BB-3v3-IndAgObs-v1',
                         render_mode='rgb_array')
         env.reset(seed=SEED)
         frame = env.render()
@@ -167,7 +167,7 @@ class TestBasketballRendering:
         env.close()
 
     def test_render_dimensions(self):
-        env = gym.make('MosaicMultiGrid-Basketball-3vs3-IndAgObs-v0',
+        env = gym.make('MosaicMultiGrid-BB-3v3-IndAgObs-v1',
                         render_mode='rgb_array')
         env.reset(seed=SEED)
         frame = env.render()
@@ -200,16 +200,15 @@ class TestBasketballGameplay:
         # At step 200, should be truncated (if no team scored 2 goals)
         assert any(truncs.values())
 
-    def test_positive_only_rewards(self, env_ind):
-        """Rewards should be positive-only (no negative rewards for opponents)."""
-        env_ind.reset(seed=SEED)
-        for _ in range(200):
-            action = {i: env_ind.action_space[i].sample() for i in range(6)}
-            _, rewards, terms, _, _ = env_ind.step(action)
-            for r in rewards.values():
-                assert r >= 0, f"Negative reward found: {rewards}"
-            if any(terms.values()):
-                break
+    def test_no_zero_sum_penalty(self, env_ind):
+        """Opponents must not receive negative goal rewards (zero_sum=False).
+
+        Shaping rewards (ball-approach, carry-toward-goal) can be negative
+        when agents move away from their target — that is expected behaviour.
+        Only goal rewards must never penalise the non-scoring team.
+        """
+        inner = env_ind.unwrapped
+        assert inner.zero_sum is False, "Basketball IndAgObs should not be zero-sum"
 
 
 class TestRewardSignCorrectness:
@@ -233,10 +232,11 @@ class TestRewardSignCorrectness:
 
         ball = Ball(color='red', index=0)
         agent.state.carrying = ball
-        agent.state.pos = (16, 5)
-        agent.state.dir = 0  # facing right -> front_pos = (17, 5)
+        agent.state.pos = (16, 5)   # one step left of Blue's goal at (17, 5)
+        agent.state.dir = 0  # facing right -> walks into (17, 5)
 
-        actions = {0: Action.drop, 1: Action.done, 2: Action.done,
+        # IndAgObs: scoring is walk-in (forward into goal), not drop-at-goal
+        actions = {0: Action.forward, 1: Action.done, 2: Action.done,
                    3: Action.done, 4: Action.done, 5: Action.done}
         _, rewards, _, _, _ = env.step(actions)
 

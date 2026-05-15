@@ -22,10 +22,15 @@ import numpy as np
 import pytest
 
 from mosaic_multigrid.envs import (
-    SoccerGame4HEnhancedEnv16x11N2,
-    CollectGame4HEnhancedEnv10x10N2,
-    CollectGame3HEnhancedEnv10x10N3,
+    SoccerGame4HIndAgObsEnv16x11N2,
+    CollectGame4HIndAgObsEnv10x10N2,
+    CollectGame3HIndAgObsEnv10x10N3,
 )
+
+# v6.5.0+: Enhanced suffix renamed to IndAgObs
+SoccerGame4HEnhancedEnv16x11N2  = SoccerGame4HIndAgObsEnv16x11N2
+CollectGame4HEnhancedEnv10x10N2 = CollectGame4HIndAgObsEnv10x10N2
+CollectGame3HEnhancedEnv10x10N3 = CollectGame3HIndAgObsEnv10x10N3
 
 
 class TestRandomMixinSeeding:

@@ -325,6 +325,11 @@ class AmericanFootballEnv(MultiGridEnv):
                                 a.state.terminated = True
                         break
 
+        # Propagate walk-in termination into the returned terminated dict so
+        # callers see the correct value in the same step it is triggered.
+        if any(a.state.terminated for a in self.agents):
+            terminated = {a.index: bool(a.state.terminated) for a in self.agents}
+
         # ---- Reward shaping ----
         if self.reward_shaping:
             # +0.3 steal bonus — agents that took the ball from a carrying opponent

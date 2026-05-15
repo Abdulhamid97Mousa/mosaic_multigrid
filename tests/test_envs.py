@@ -9,12 +9,15 @@ import pytest
 import gymnasium as gym
 
 from mosaic_multigrid.envs import (
-    SoccerGameEnv,
-    SoccerGame4HEnv10x15N2,
     SoccerGame4HIndAgObsEnv16x11N2,
-    CollectGameEnv,
-    CollectGame4HEnv10x10N2,
+    CollectGame4HIndAgObsEnv10x10N2,
 )
+from mosaic_multigrid.envs.soccer_game import SoccerGameEnv, SoccerGameIndAgObsEnv
+from mosaic_multigrid.envs.collect_game import CollectGameEnv
+
+# v6.5.0+: 10x15 base variant replaced by 16x11 IndAgObs variant
+SoccerGame4HEnv10x15N2 = SoccerGame4HIndAgObsEnv16x11N2
+CollectGame4HEnv10x10N2 = CollectGame4HIndAgObsEnv10x10N2
 from mosaic_multigrid.core import Action, Type
 
 
@@ -26,8 +29,8 @@ class TestSoccerEnv:
     def test_creation(self):
         env = SoccerGame4HEnv10x15N2(render_mode='rgb_array')
         assert env.num_agents == 4
-        assert env.width == 15
-        assert env.height == 10
+        assert env.width == 16
+        assert env.height == 11
 
     def test_team_assignments(self):
         env = SoccerGame4HEnv10x15N2()
@@ -50,9 +53,9 @@ class TestSoccerEnv:
     def test_goals_placed(self):
         env = SoccerGame4HEnv10x15N2()
         env.reset(seed=42)
-        # Goals at (1,5) and (13,5)
+        # Goals at (1,5) and (14,5) in the 16x11 grid
         obj1 = env.grid.get(1, 5)
-        obj2 = env.grid.get(13, 5)
+        obj2 = env.grid.get(14, 5)
         assert obj1.type == Type.objgoal
         assert obj2.type == Type.objgoal
 
@@ -69,14 +72,10 @@ class TestSoccerEnv:
         assert ball_count == 1
 
     def test_zero_sum_rewards(self):
-        """When team scores, other team gets negative reward."""
+        """IndAgObs Soccer 2v2 uses positive-only rewards (zero_sum=False)."""
         env = SoccerGame4HEnv10x15N2()
         env.reset(seed=42)
-        # Artificially set up a scoring scenario
-        # Agent 0 (team 1) carries ball, faces goal at (1,5) which is team 1's goal
-        # Actually team 1's goal should reward team 1
-        # Let's just verify zero_sum is True
-        assert env.zero_sum is True
+        assert env.zero_sum is False
 
     def test_render_returns_frame(self):
         env = SoccerGame4HEnv10x15N2(render_mode='rgb_array')
@@ -219,7 +218,7 @@ class TestCollectMechanics:
 
         # Pickup should consume ball and give reward
         _, rewards, _, _, _ = env.step({0: Action.pickup})
-        assert rewards[0] == 1.0
+        assert rewards[0] >= 1.0  # base reward + possible time-efficiency bonus
         assert env.grid.get(*ball_pos) is None  # ball consumed
 
     def test_pickup_matching_team_ball(self):
@@ -250,7 +249,7 @@ class TestCollectMechanics:
 
         # Should succeed
         _, rewards, _, _, _ = env.step({0: Action.pickup})
-        assert rewards[0] == 1.0
+        assert rewards[0] >= 1.0  # base reward + possible time-efficiency bonus
 
 
 # ---------------------------------------------------------------
@@ -259,17 +258,17 @@ class TestCollectMechanics:
 
 class TestGymMake:
     def test_soccer_registered(self):
-        env = gym.make('MosaicMultiGrid-Soccer-v0')
+        env = gym.make('MosaicMultiGrid-S-2v2-IndAgObs-v1')
         assert env.unwrapped.num_agents == 4
         env.close()
 
     def test_collect_registered(self):
-        env = gym.make('MosaicMultiGrid-Collect-v0')
+        env = gym.make('MosaicMultiGrid-C-IndAgObs-v1')
         assert env.unwrapped.num_agents == 3
         env.close()
 
     def test_soccer_with_render_mode(self):
-        env = gym.make('MosaicMultiGrid-Soccer-v0', render_mode='rgb_array')
+        env = gym.make('MosaicMultiGrid-S-2v2-IndAgObs-v1', render_mode='rgb_array')
         obs, _ = env.reset(seed=42)
         frame = env.render()
         assert frame.shape[2] == 3

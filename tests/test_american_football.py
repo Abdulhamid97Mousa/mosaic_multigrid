@@ -23,14 +23,14 @@ SEED = 42
 
 @pytest.fixture
 def env_1v1():
-    env = gym.make('MosaicMultiGrid-AmericanFootball-1v1-v0')
+    env = gym.make('MosaicMultiGrid-AF-1v1-IndAgObs-v1')
     yield env
     env.close()
 
 
 @pytest.fixture
 def env_solo_green():
-    env = gym.make('MosaicMultiGrid-AmericanFootball-Solo-Green-v0')
+    env = gym.make('MosaicMultiGrid-AF-G-1v0-v1')
     yield env
     env.close()
 
@@ -313,7 +313,7 @@ class TestRendering:
 
     def test_render_produces_valid_frame(self, env_1v1):
         """Test that rendering produces a valid RGB array."""
-        env = gym.make('MosaicMultiGrid-AmericanFootball-1v1-v0', render_mode='rgb_array')
+        env = gym.make('MosaicMultiGrid-AF-1v1-IndAgObs-v1', render_mode='rgb_array')
         env.reset(seed=SEED)
 
         frame = env.render()

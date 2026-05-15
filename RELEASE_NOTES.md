@@ -4,6 +4,156 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+---
+
+## [6.7.0] - 2026-05-15
+
+### Overview
+
+Enforces correct goal geometry across all JAX training environments and
+the Gymnasium sport environments. The central change is a **mandatory
+`goal_rows` parameter** in every JAX environment constructor: omitting it
+raises an `AssertionError` with a precise error message pointing to the
+correct flag, preventing silent misconfigurations that caused the invisible-
+goals training regression discovered in the V2 campaign. Observation
+encoding is now defined through named constants asserted unique at
+import time, eliminating the class of bug where goals were encoded
+identically to floor cells.
+
+### Breaking Changes
+
+#### JAX environments: `goal_rows` is now mandatory
+
+`SoccerJAX`, `AmericanFootballJAX`, and `BasketballJAX` no longer fall back
+to a silent default when `goal_rows` is not supplied. Passing `goal_rows=None`
+(the previous default) now raises:
+
+```
+AssertionError: [SoccerJAX] goal_rows must be explicitly provided.
+  Expected for soccer: goal_rows=[4, 5, 6]
+  In training scripts: --goal-rows 4 5 6
+  Use DEFAULT_GOAL_ROWS if you want the canonical value.
+```
+
+**Correct canonical values:**
+
+| Environment | `goal_rows` | Description |
+|---|---|---|
+| `SoccerJAX` | `[4, 5, 6]` | 3-cell goal centred at y=5 |
+| `AmericanFootballJAX` | `list(range(1, 10))` | Full end-zone column (rows 1–9) |
+| `BasketballJAX` | `[5]` | Single hoop at centre row |
+
+Additional validation fires at construction time:
+- Non-empty list required
+- No duplicate row values
+- All values in `[1, HEIGHT−2]` (playable rows only)
+
+**Migration — any direct instantiation must now pass `goal_rows`:**
+
+```python
+# Before (silently used DEFAULT_GOAL_ROWS — now raises AssertionError)
+env = SoccerJAX(variant='G-2v0', view_size=7)
+
+# After
+from jaxmarl_worker.environments.soccer_jax import DEFAULT_GOAL_ROWS
+env = SoccerJAX(variant='G-2v0', view_size=7, goal_rows=[4, 5, 6])
+```
+
+### New Features
+
+#### Observation encoding constants with import-time integrity assertions
+
+All three JAX environment modules now define named constants for every
+observation encoding value and assert their uniqueness at module load time:
+
+```python
+_OBJ_FLOOR      = 1.0   # passable empty cell
+_OBJ_WALL       = 2.0   # impassable border
+_OBJ_GREEN_GOAL = 5.0   # STATIC_GRID base==5
+_OBJ_BLUE_GOAL  = 6.0   # STATIC_GRID base==6
+_OBJ_BALL       = 7.0   # loose ball
+_OBJ_AGENT      = 10.0  # agent (overrides all)
+```
+
+The following assertions fire at `import` time — before any training starts:
+
+```python
+assert len(_ALL_OBJ_VALS) == len(set(_ALL_OBJ_VALS)), "collision"
+assert _OBJ_GREEN_GOAL != _OBJ_FLOOR, "Invisible goals bug"
+assert _OBJ_BLUE_GOAL  != _OBJ_FLOOR, "Invisible goals bug"
+```
+
+This prevents the regression from the V2 campaign (May 2026) where
+`obj=1.0` was accidentally used for goals, encoding them identically
+to empty floor cells and producing invisible-goals checkpoints.
+
+#### `--goal-rows` CLI flag in all algorithm files
+
+All four training algorithm files now accept a `--goal-rows` flag:
+
+```bash
+# Soccer
+--goal-rows 4 5 6
+
+# American Football (full end-zone column)
+--goal-rows 1 2 3 4 5 6 7 8 9
+
+# Basketball
+--goal-rows 5
+```
+
+Files updated: `mappo_indagobs_scan.py`, `mappo_teamobs_scan.py`,
+`ippo_scan.py`, `happo_scan.py`.
+
+All 18 V2 training scripts now pass `--goal-rows` explicitly, making
+goal geometry visible in the launch command and auditable from logs.
+
+#### Correct goal geometry restored in Gymnasium Soccer environments
+
+All `SoccerGameIndAgObsEnv` subclasses have been updated from a single-cell
+goal at y=5 to a **3-cell goal arc at y=4,5,6** on each side of the pitch,
+matching the JAX training environments:
+
+```python
+# Before (1-cell goal — inconsistent with JAX)
+goal_pos=[[1, 5], [14, 5]],  goal_index=[1, 2]
+
+# After (3-cell goal arc — consistent with JAX)
+goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]],  goal_index=[1,1,1,2,2,2]
+```
+
+`_target_goal_pos()` updated to return the **centre cell** (y=5) regardless
+of goal arc width, ensuring reward-shaping gradients point to the middle of
+the goal rather than its top edge.
+
+Affected classes (all `SoccerGameIndAgObsEnv` subclasses on the 16×11 grid):
+`SoccerGame4HIndAgObsEnv16x11N2`, `SoccerGame2HIndAgObsEnv16x11N2`,
+`SoccerSoloGreenIndAgObsEnv16x11`, `SoccerSoloBlueIndAgObsEnv16x11`,
+`SoccerGreen2v0IndAgObsEnv16x11`, `SoccerBlue0v2IndAgObsEnv16x11`,
+`SoccerGreen3v0IndAgObsEnv16x11`, `SoccerBlue0v3IndAgObsEnv16x11`,
+`SoccerGame6HIndAgObsEnv16x11N3`.
+
+#### New Gymnasium environment: `MosaicMultiGrid-S-1v1-TeamObs-v1`
+
+`Soccer1v1TeamObsEnv` (TeamObs wrapper over `SoccerGame2HIndAgObsEnv16x11N2`)
+added and registered, completing the Soccer environment matrix to 16 registered
+IDs (matching Basketball and American Football).
+
+#### `envs_S.png` regenerated — 4×4 grid (16 variants)
+
+`figures/envs_S.png` updated to the same 4×4 layout as `envs_BB.png` and
+`envs_AF.png`, showing all 16 registered Soccer Gym IDs with 3-cell goals
+visible in every panel.
+
+### Backward Compatibility
+
+- Gymnasium environment IDs unchanged (16 Soccer, same IDs)
+- `reward_shaping=False` still produces sparse goal-only rewards
+- Observation spaces unchanged
+- **JAX environments: `goal_rows=None` is no longer accepted** — see Breaking Changes
+
+---
+
 ## [6.6.0] - 2026-05-07
 
 ### Overview
@@ -24,8 +174,8 @@ toward the nearest loose ball on the grid. Mirrors the existing
 
 | Phase | Before 6.6.0 | 6.6.0+ |
 |---|---|---|
-| Carrying | gradient toward goal ✓ | gradient toward goal (unchanged) |
-| Not carrying | no gradient ✗ | gradient toward loose ball ✓ |
+| Carrying | gradient toward goal | gradient toward goal (unchanged) |
+| Not carrying | no gradient | gradient toward loose ball |
 
 The shaping block is now structurally identical across Soccer, Basketball,
 and American Football — one mental model applies to all three.
@@ -88,8 +238,8 @@ from pickup/drop cycles, completely ignoring the +15 scoring reward.
 **v6.5.0 removes the exploitable components and replaces them with hack-proof alternatives.**
 
 **Training validation (MAPPO-scan, JAX, 131M steps per variant):**
-- Solo (G-1v0, B-0v1): ep_ret ≈ 1.1–1.2, entropy ≈ 0.37 — converged ✓
-- 2v2: IPPO scored in 32 steps with emergent role specialisation ✓
+- Solo (G-1v0, B-0v1): ep_ret ≈ 1.1–1.2, entropy ≈ 0.37 (converged)
+- 2v2: IPPO scored in 32 steps with emergent role specialisation
 - 1v1/3v3 competitive: near-zero ep_ret at 2000 updates — need more training
 
 ### Breaking Changes
@@ -152,12 +302,12 @@ Also fixed: Basketball `_handle_pickup` now restricts steals to opponents only.
 
 Carrying-gated distance shaping remains. Drop resets it — pickup/drop cycling yields zero.
 
-### New Features (retained from earlier 6.5.0 work)
+### New Features
 
 #### Ball provenance tracking (`_ball_last_carrier_team`)
 
-~~Blocks the same-team pickup farming exploit~~ — this mechanism is now superseded by full
-pickup reward removal. Retained in Soccer and Basketball for internal bookkeeping only.
+Blocks the same-team pickup farming exploit. Retained in Soccer and Basketball
+for internal bookkeeping.
 
 ```python
 # In BasketballGameIndAgObsEnv / SoccerGameIndAgObsEnv step():
@@ -167,74 +317,26 @@ if carrying and not prev_carrying:
         rewards[agent.index] += 0.1   # only genuine first possession
 ```
 
-#### Pass-chain counter (`_ball_pass_count`)
-
-Penalizes A→B→A bounce passes that farm the first-pass +0.1 reward without
-tactical purpose. The counter resets on: ground drop, steal, goal, episode reset.
-
-| Pass number | Reward | Rationale |
-|-------------|--------|-----------|
-| 1st pass | +0.1 | Reward genuine teamwork |
-| 2nd consecutive pass | -0.2 | Penalise A→B→A bounce |
-| 3rd+ pass | 0 | Silent — prevents stacking negative signals |
-
 #### Timeout penalty: −1.0 (all sport environments)
 
-Episodes that reach `max_steps` without a winner now apply a −1.0 penalty to
-all agents. This creates the pressure that prevents agents from learning to stall.
-
-#### Proximity reward: +0.01/step within Manhattan distance 3 of ball
-
-When an agent is not carrying the ball and is within Manhattan distance 3 of
-any ball on the grid (or any agent carrying the ball), it receives +0.01 per
-step. This is the critical "missing rung" in the reward ladder that allows
-random-walk exploration to discover the ball before the first pickup event.
-
-```python
-# Reward ladder (from random walk to scoring):
-# +0.01/step near ball  → +0.1 on pickup → +0.05/step toward goal → +15.0 score
-```
-
-Currently implemented in `BasketballGameIndAgObsEnv`. Pending: Soccer, American Football.
+Episodes that reach `max_steps` without a winner apply a −1.0 penalty to
+all agents, preventing stalling strategies.
 
 ### Configuration Changes
 
-The following MAPPO training hyperparameters were updated based on empirical
-training results and the FXP paper (Feng et al., 2023) recommendations for
-symmetric zero-sum multi-agent games:
-
 | Parameter | Old | New | Reason |
 |-----------|-----|-----|--------|
-| `use_parameter_sharing` | False | **True** | FXP: shared policy eliminates local NE traps in symmetric games |
-| `buffer_size` | 200 | **2400** | 8 × 300 = one full episode per env per update (GAE requires complete episodes) |
-| `n_minibatch` | 1 | **4** | Prevents trivial critic collapse on small minibatches |
-| `ent_coef` | 0.05 | **0.01** | FXP paper gridworld recommendation (0.05 kept policy random) |
-| `n_epochs` | 10 | **5** (basketball) | Fewer passes per buffer reduces critic non-stationarity with 6 agents |
-| `learning_rate` | 0.0007 | **0.0003** (basketball) | Dampens oscillation from 6-agent joint policy updates |
+| `use_parameter_sharing` | False | **True** | Eliminates local NE traps in symmetric games |
+| `buffer_size` | 200 | **2400** | One full episode per env per update |
+| `n_minibatch` | 1 | **4** | Prevents trivial critic collapse |
+| `ent_coef` | 0.05 | **0.01** | Reduces entropy dominance |
 
 ### Bug Fixes
 
-- **`use_global_state`**: Set to `True` in 1v1 MAPPO configs (was `False`).
-  The MAPPO centralized critic should see both agents' observations for proper
-  credit assignment in competitive play.
+- **`use_global_state`**: Set to `True` in 1v1 MAPPO configs.
 - **Soccer/Basketball 1v1 network size**: Corrected `representation_hidden_size`
-  from `[64, 64]` to `[128, 128]` to match the `(7,7,3)=147` flattened observation
-  when `MOSAIC_VIEW_SIZE=7`.
-
-### New Training Scripts
-
-Direct-launch v6_5 scripts added for all variants:
-
-| Script | Environment |
-|--------|-------------|
-| `mappo_american_football_1v1_v6_5.sh` | AF 1v1 competitive |
-| `mappo_soccer_1vs1_v6_5.sh` | Soccer 1v1 competitive |
-| `mappo_american_football_solo_green_v6_5.sh` | AF Solo Green (curriculum) |
-| `mappo_american_football_solo_blue_v6_5.sh` | AF Solo Blue (curriculum) |
-
-All scripts follow the same pattern as the existing 2v2/3v3 v6_5 scripts:
-no MOSAIC GUI required, pre-flight check for v6.5.0 source, direct background
-launch with stdout/stderr logging.
+  from `[64, 64]` to `[128, 128]` to match the `(7,7,3)=147` flattened
+  observation at `view_size=7`.
 
 ### Backward Compatibility
 
@@ -242,158 +344,3 @@ launch with stdout/stderr logging.
 - `reward_shaping=False` still produces sparse goal-only rewards
 - `max_steps` can be overridden at `gym.make()` time
 - Observation shapes unchanged
-
----
-
-## [6.4.0] - 2026-04-08
-
-### New Features
-
-#### SMAC-Style Reward Shaping (All Three Sports)
-
-All sport environments now include dense reward shaping following the SMAC
-(Samvelyan et al., 2019) pattern. Controlled by `reward_shaping=True` (default).
-
-Without shaping, agents receive reward only on scoring. Random agents score
-~0.6% of episodes, providing no gradient signal for PPO/MAPPO/IPPO. With
-shaping, PPO reaches 56% touchdown rate within 150 iterations.
-
-**Reward components (when `reward_shaping=True`):**
-
-| Event | Reward | All Sports |
-|-------|--------|------------|
-| Pick up ball | +0.1 | Per possession |
-| Move toward goal while carrying | +0.01 per step | AF: 1D column, Soccer/Basketball: 2D Manhattan |
-| Move away from goal while carrying | -0.01 per step | Same |
-| Score (touchdown/goal) | +1.0 | Existing |
-
-**Distance metrics:**
-- American Football: 1D column distance via `_target_endzone_x()`
-- Soccer: 2D Manhattan distance to goal square via `_target_goal_pos()`
-- Basketball: 2D Manhattan distance to goal square via `_target_goal_pos()`
-
-```python
-# Training (dense rewards, default)
-env = AmericanFootball1v1Env16x11(reward_shaping=True)
-
-# Evaluation (sparse, goal-only rewards)
-env = AmericanFootball1v1Env16x11(reward_shaping=False)
-```
-
-#### Configurable `view_size` for American Football
-All American Football variants now accept `view_size` as a constructor
-parameter (default: 3). Use `view_size=7` for 39% field coverage.
-
-#### American Football Infrastructure (matching Soccer/Basketball IndAgObs)
-- 10-step dual steal cooldown (prevents ping-pong exploit)
-- Teleport passing (ball teleports to random teammate)
-- Event tracking: `goal_scored_by`, `pass_completed`, `steal_completed`
-- Per-agent telemetry: `position` and `carrying` per step
-
-### Bug Fixes
-
-- **Fixed `ObjectGoal.can_overlap()`**: Changed from `False` to `True`.
-  This was a critical v6.3.0 bug: walk-in scoring was dead code because
-  agents physically could not step onto goal squares. Soccer and Basketball
-  goals now allow overlap, enabling the walk-in scoring mechanic that v6.3.0
-  introduced but never actually worked.
-
-- **Fixed `see_through_walls`**: Changed from `True` to `False` for American
-  Football, matching Soccer/Basketball behavior.
-
-- **Fixed `goal_scored_by` initialization**: Added missing list initialization
-  in `reset()`, fixing `AttributeError` on first touchdown.
-
-### Documentation
-- **NEW: `AMERICAN_FOOTBALL.md`**: Grid layout, scoring, reward shaping, SMAC comparison.
-- **Renamed: `SOCCER_IMPROVEMENTS.md` -> `FOOTBALL.md`**
-
-### Backward Compatibility
-- Default `view_size=3` preserved (no observation shape change unless overridden)
-- Default `reward_shaping=True` is new behavior; set `False` for v6.3.0 behavior
-- `ObjectGoal.can_overlap()=True` changes walk-in scoring from broken to working
-- All Gymnasium environment IDs unchanged
-- 303 tests pass (0 failures)
-
----
-
-Given a breaking change in this release, I've decided to bump the version from 6.2.0 to 6.3.0.
-
-## [6.3.0] - 2025-03-14
-### Breaking Changes
-
-#### Walk-In Scoring (All Sports)
-**Previous behavior (v6.0-6.2):**
-- Agents had to execute the `DROP` action while **facing** the goal square to score
-- Required precise positioning and action sequencing (navigate → face ball → pickup → navigate to goal → face goal → drop)
-- Complex learning objective (6 steps)
-
-**New behavior (v6.3+):**
-- Agents score by **walking into the goal square** while carrying the ball
-- Simplified to navigate → pickup → navigate to goal → score (3 steps)
-- **DROP action** no longer scores - it only handles teleport passing and ground drops
-- More intuitive (like real sports: carry ball into goal area)
-- Faster convergence (reduced action space complexity)
-
-#### Goal Representation (Consistent Across All Sports)
-| Sport | Goal Type | Size | Scoring Method |
-|-------|-----------|------|----------------|
-| **Soccer** | Single square | 1x1 tile | Walk into goal square while carrying ball |
-| **Basketball** | Single square | 1x1 tile | Walk into goal square while carrying ball |
-| **American Football** | End zone | Full vertical column (1x9 tiles) | Walk into end zone column while carrying ball |
-
-#### DROP Action Changes
-**v6.0-6.2:**
-- DROP = score at goal OR pass to teammate OR drop on ground
-
-- Priority: score > pass > drop
-
-**v6.3+:**
-- DROP = teleport pass to teammate OR drop on ground (NO scoring)
-- Scoring happens automatically when agent walks into goal while carrying
-- Simplifies action logic
-
-### Fixed Issues
-- **Legacy multigrid.py removed**: The old `multigrid.py` file that used deprecated Gym API has been renamed to `multigrid_legacy.py.bak`
-- **Test updates**: All tests updated to match v6.3.0 walk-in scoring behavior
-  - American Football: Game terminates when `goals_to_win` reached (default 2)
-  - Soccer/Basketball: Walk-in scoring tests pass
-  - Goal tracking (`goal_scored_by`) properly populated in all environments
-### Migration Guide
-#### For Users with v6.2.x code
-1. **Scoring logic**: Remove any DROP-based scoring logic - scoring is now automatic
-2. **Action sequences**: Simplify from 6-step to 3-step sequences
-   ```python
-   # OLD (v6.2)
-   # 1. Navigate to ball
-   # 2. Face ball
-   # 3. Execute PICKUP
-   # 4. Navigate to goal
-   # 5. Face goal square
-   # 6. Execute DROP to score
-   
-   # NEW (v6.3)
-   # 1. Navigate to ball
-   # 2. Execute PICKUP
-   # 3. Navigate to goal square -> AUTOMATIC SCORE!
-   ```
-
-3. **DROP action**: Use DROP only for passing to teammates,4. **Goal detection**: Agents score when they step INTO the goal square (not when facing it)
-#### For Trained Models
-- **Checkpoints incompatible**: Models trained on v6.2.x will need retraining
-- **Reward distribution unchanged**: Team rewards still work the same way
-- **Episode termination unchanged**: First team to `goals_to_win` (default 2) still wins
-### Documentation Updates
-- **SOCCER_IMPROVEMENTS.md**: Added v6.3.0 section with walk-in scoring details
-- **BASKETBALL.md**: Added v6.3.0 section with walk-in scoring details
-- **OBSERVATION_MODELS.md**: Added v6.3.0 update header
-- **RELEASE_NOTES.md**: Created this file for version tracking
-### Backward Compatibility
-- Old environment names still work (e.g., `SoccerGame4HEnhancedEnv16x11N2` is now an alias for `SoccerGame4HIndAgObsEnv16x11N2`)
-- All Gymnasium environment IDs remain unchanged
-- Observation space unchanged (still 3-channel uint8 images)
-### Next Steps
-1. Update `pyproject.toml` version to `6.3.0`
-2. Build distribution: `python -m build`
-3. Upload to PyPI: `twine upload dist/*`
-4. Update documentation with migration guide

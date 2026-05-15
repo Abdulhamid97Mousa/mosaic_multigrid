@@ -5,7 +5,7 @@
 
 This document explains the improvements made to the **Collect environments** (individual and team-based) in MOSAIC multigrid to fix critical bugs and optimize for reinforcement learning training.
 
-![Collect Environment -- Base](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
+![Collect Environment -- Base](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-C-IndAgObs-v1.png)
 
 ---
 
@@ -113,7 +113,7 @@ Training efficiency: Excellent
 
 ### **Variant 1: CollectGame3HEnv10x10N3 (Individual Competition)**
 
-![Variant 1 -- Individual 3-Agent Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Variant_1_Gym-MosaicMultiGrid-Collect-Enhanced-v0.png)
+![Variant 1 -- Individual 3-Agent Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Variant_1_Gym-MosaicMultiGrid-C-IndAgObs-v1.png)
 
 **Setup:**
 - **3 agents** on **3 separate teams** (every agent for themselves)
@@ -123,7 +123,7 @@ Training efficiency: Excellent
 
 **Gameplay:**
 ```python
-env = gym.make('MosaicMultiGrid-Collect-v0')
+env = gym.make('MosaicMultiGrid-C-IndAgObs-v1')
 
 Episode flow:
 1. 5 balls spawn at random positions
@@ -156,7 +156,7 @@ Example scores: Agent 0: +3, Agent 1: +1, Agent 2: +1 -> Agent 0 wins!
 
 **Gameplay:**
 ```python
-env = gym.make('MosaicMultiGrid-Collect-2vs2-v0')
+env = gym.make('MosaicMultiGrid-C-2v2-IndAgObs-v1')
 
 Episode flow:
 1. 7 balls spawn at random positions
@@ -210,13 +210,13 @@ Red:   -4 (collected 3 balls, zero-sum)
 
 ## Environment Registry
 
-### **MosaicMultiGrid-Collect-v0** (Deprecated)
+### **MosaicMultiGrid-C-IndAgObs-v1** (Deprecated)
 
 **Status:** Deprecated -- kept for backward compatibility only
 
 ```python
 # Old environment (broken, not recommended)
-env = gym.make('MosaicMultiGrid-Collect-v0')
+env = gym.make('MosaicMultiGrid-C-IndAgObs-v1')
 obs, _ = env.reset()
 
 # BUG: Runs for 10,000 steps even after all balls collected
@@ -230,13 +230,13 @@ for step in range(10000):
 
 ---
 
-### **MosaicMultiGrid-Collect-Enhanced-v0** (Recommended)
+### **MosaicMultiGrid-C-IndAgObs-v1** (Recommended)
 
 **Status:** [RECOMMENDED] For individual competition (3 agents, no teams)
 
 ```python
 # Enhanced environment (fixed, recommended)
-env = gym.make('MosaicMultiGrid-Collect-Enhanced-v0', max_steps=300)
+env = gym.make('MosaicMultiGrid-C-IndAgObs-v1', max_steps=300)
 obs, _ = env.reset()
 
 for step in range(300):
@@ -265,12 +265,12 @@ its own team (`agents_index=[1,2,3]`), meaning N=0 teammates per agent.
 
 ---
 
-### **MosaicMultiGrid-Collect-2vs2-Enhanced-v0** (Recommended)
+### **MosaicMultiGrid-C-2v2-IndAgObs-v1** (Recommended)
 
 **Status:** [RECOMMENDED] For 2v2 team competition with independent views
 
 ```python
-env = gym.make('MosaicMultiGrid-Collect-2vs2-Enhanced-v0', max_steps=300)
+env = gym.make('MosaicMultiGrid-C-2v2-IndAgObs-v1', max_steps=300)
 obs, _ = env.reset()
 ```
 
@@ -279,13 +279,13 @@ obs, _ = env.reset()
 
 ---
 
-### **MosaicMultiGrid-Collect-2vs2-TeamObs-v0** (Recommended for team coordination)
+### **MosaicMultiGrid-C-2v2-TeamObs-v1** (Recommended for team coordination)
 
 **Status:** [RECOMMENDED] For 2v2 team competition with teammate awareness
 
 ```python
 # TeamObs variant -- SMAC-style teammate awareness
-env = gym.make('MosaicMultiGrid-Collect-2vs2-TeamObs-v0', render_mode='rgb_array')
+env = gym.make('MosaicMultiGrid-C-2v2-TeamObs-v1', render_mode='rgb_array')
 obs, _ = env.reset()
 
 # Each agent's observation now includes teammate features:
@@ -392,7 +392,7 @@ and coordination to find the ball and opponents.
 
 **Before (view_size=7) -- agent sees almost half the grid:**
 
-![view_size=7 Bug -- Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-Collect-v0.png)
+![view_size=7 Bug -- Collect](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/VIEW_SIZE_7_Gym-MosaicMultiGrid-C-IndAgObs-v1.png)
 
 **After (view_size=3) -- meaningful partial observability:**
 

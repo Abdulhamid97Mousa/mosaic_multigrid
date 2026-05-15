@@ -568,7 +568,7 @@ class BasketballSoloGreenIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     remapping.
 
     view_size can be overridden at make time:
-        ``gym.make('MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v0', view_size=7)``
+        ``gym.make('MosaicMultiGrid-BB-G-1v0-v1', view_size=7)``
     """
 
     def __init__(self, **kwargs):
@@ -601,7 +601,7 @@ class BasketballSoloBlueIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     checkpoint key must be remapped from ``agent_0`` to ``agent_1``.
 
     view_size can be overridden at make time:
-        ``gym.make('MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v0', view_size=7)``
+        ``gym.make('MosaicMultiGrid-BB-B-0v1-v1', view_size=7)``
     """
 
     def __init__(self, **kwargs):
