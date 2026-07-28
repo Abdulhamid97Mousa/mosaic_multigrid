@@ -146,10 +146,11 @@ class TestSoccer1vs1:
                 if obj is not None and obj.type.value == 'objgoal':
                     goal_positions.append((x, y))
 
-        assert len(goal_positions) == 2
-        # Goals should be at (1,5) and (14,5) - vertical center
-        assert (1, 5) in goal_positions
-        assert (14, 5) in goal_positions
+        assert len(goal_positions) == 6
+        # 3-cell goal arcs at y=4,5,6 on each side
+        for y in (4, 5, 6):
+            assert (1, y) in goal_positions
+            assert (14, y) in goal_positions
         env.close()
 
     def test_soccer_1vs1_no_teleport_pass(self):

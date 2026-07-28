@@ -105,8 +105,8 @@ class TestSoccerSoloCreation:
     def test_goals_at_correct_positions(self, soccer_solo_green_v3):
         soccer_solo_green_v3.reset(seed=SEED)
         inner = soccer_solo_green_v3.unwrapped
-        assert inner.goal_pos == [[1, 5], [14, 5]]
-        assert inner.goal_index == [1, 2]
+        assert inner.goal_pos == [[1, 4], [1, 5], [1, 6], [14, 4], [14, 5], [14, 6]]
+        assert inner.goal_index == [1, 1, 1, 2, 2, 2]
 
 
 class TestViewSizeOverride:

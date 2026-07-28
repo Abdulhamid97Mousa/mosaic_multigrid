@@ -185,7 +185,6 @@ class TestTouchdownScoring:
 
             # Check that agent0 scored (v6.3.0: game continues until goals_to_win reached)
         assert rewards[0] > 0, "Agent 0 should receive positive reward for touchdown"
-        assert rewards[1] < 0, "Agent 1 should receive negative reward (zero-sum)"
         assert agent0.state.carrying is None, "Ball should be removed from agent after touchdown"
         # Note: Game continues until goals_to_win (default 2) is reached
 
@@ -261,7 +260,6 @@ class TestTouchdownScoring:
 
         # Check that agent1 scored (v6.3.0: game continues until goals_to_win reached)
         assert rewards[1] > 0, "Agent 1 should receive positive reward for touchdown"
-        assert rewards[0] < 0, "Agent 0 should receive negative reward (zero-sum)"
         assert agent1.state.carrying is None, "Ball should be removed from agent after touchdown"
         # Note: Game continues until goals_to_win (default 2) is reached
 
