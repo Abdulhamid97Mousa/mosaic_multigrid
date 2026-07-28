@@ -424,7 +424,7 @@ class AmericanFootball1v1Env16x11(AmericanFootballEnv):
             width=16, height=11, view_size=view_size,
             num_balls=1, agents_index=[0, 1],
             balls_index=[0], balls_reward=[1.0],
-            zero_sum=True, goals_to_win=2,
+            zero_sum=False, goals_to_win=2,
             render_mode=render_mode,
             reward_shaping=reward_shaping,
         )
@@ -442,7 +442,7 @@ class AmericanFootball2v2Env16x11(AmericanFootballEnv):
             width=16, height=11, view_size=view_size,
             num_balls=1, agents_index=[0, 0, 1, 1],
             balls_index=[0], balls_reward=[1.0],
-            zero_sum=True, goals_to_win=2,
+            zero_sum=False, goals_to_win=2,
             render_mode=render_mode,
             reward_shaping=reward_shaping,
         )
@@ -460,7 +460,7 @@ class AmericanFootball3v3Env16x11(AmericanFootballEnv):
             width=16, height=11, view_size=view_size,
             num_balls=1, agents_index=[0, 0, 0, 1, 1, 1],
             balls_index=[0], balls_reward=[1.0],
-            zero_sum=True, goals_to_win=2,
+            zero_sum=False, goals_to_win=2,
             render_mode=render_mode,
             reward_shaping=reward_shaping,
         )

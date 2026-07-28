@@ -121,7 +121,7 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 
 1v1 variant of the Soccer environment on the same 16x11 FIFA-style grid. Two agents (one per team) compete head-to-head. Teleport passing is a no-op (no teammates), making this a purely individual duel of ball control, stealing, and scoring. First to 2 goals wins.
 
-**IndAgObs variant:** `SoccerGame2HIndAgObsEnv16x11N2` -- 2 agents (1v1), 16x11 grid, 1 ball, zero_sum=True, max_steps=300.
+**IndAgObs variant:** `SoccerGame2HIndAgObsEnv16x11N2` -- 2 agents (1v1), 16x11 grid, 1 ball, positive-only shared team reward, max_steps=200.
 
 ### Collect 1v1 (Team-Based Collection)
 
@@ -176,9 +176,9 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 
 ---
 
-## Registered Environments (v6.5.0)
+## Registered Environments (v6.7.0)
 
-All environments use v6.5.0 defaults: scoring +15.0, max_steps=300, zero_sum=True,
+All environments use v6.7.0 defaults: scoring +15.0, max_steps=300,
 ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity reward.
 
 **50 environments** across 4 sports. Naming scheme:
