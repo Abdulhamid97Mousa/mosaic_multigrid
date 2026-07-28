@@ -6,7 +6,7 @@ All environments are registered with Gymnasium. Create via:
     gymnasium.make('MosaicMultiGrid-S-2v2-IndAgObs-v1')
     gymnasium.make('MosaicMultiGrid-BB-3v3-IndAgObs-v1')
 
-Naming scheme (v6.5.0+):
+Naming scheme (v6.8.0+):
     MosaicMultiGrid-<Sport>-[Team-]<Format>-[ObsVariant-]v1
 
     Sport:      S (Soccer) | BB (Basketball) | AF (AmericanFootball) | Collect
@@ -14,7 +14,7 @@ Naming scheme (v6.5.0+):
     Format:     NvM  (e.g. 1v0, 0v1, 1v1, 2v2, 3v3, 2v0, 0v2, 3v0, 0v3)
     ObsVariant: IndAgObs | TeamObs — omitted for solo (1v0 / 0v1) envs
 
-v6.5.0 defaults applied to all environments:
+v6.8.0 defaults applied to all environments:
     scoring reward  +15.0       (was +1.0 in v6.4.0)
     max_steps       300         (was 200 in v6.4.0)
     zero_sum        True        opponent team receives −15.0 on score
@@ -183,7 +183,7 @@ class AmericanFootballBlue0v3TeamObsEnv(TeamObsWrapper):
 
 
 # -----------------------------------------------------------------------
-# Environment registry (v6.5.0)
+# Environment registry (v6.8.0)
 # -----------------------------------------------------------------------
 
 CONFIGURATIONS: dict[str, tuple[type, dict]] = {

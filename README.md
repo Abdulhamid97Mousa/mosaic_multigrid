@@ -176,9 +176,9 @@ Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents s
 
 ---
 
-## Registered Environments (v6.7.0)
+## Registered Environments (v6.8.0)
 
-All environments use v6.7.0 defaults: scoring +15.0, max_steps=300,
+All environments use v6.8.0 defaults: scoring +15.0, max_steps=300,
 ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity reward.
 
 **50 environments** across 4 sports. Naming scheme:
@@ -666,7 +666,7 @@ for step in range(200):
 - **Truncated**: When `max_steps` reached (default varies: 100-1000 steps)
 - **Episode length**: Variable (ends as soon as goal is reached)
 
-**MOSAIC multigrid** uses natural termination (v6.5.0+):
+**MOSAIC multigrid** uses natural termination (v6.8.0+):
 - **Terminated**: When a team scores `goals_to_win` (default: 2) — episode ends early
 - **Truncated**: When `max_steps = 300` (configurable) is reached without a winner
 - **Episode length**: Variable — early termination on win, timeout penalty −1.0 discourages stalling
