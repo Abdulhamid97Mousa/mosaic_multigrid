@@ -37,6 +37,13 @@ from .soccer_game import (
     SoccerGreen3v0IndAgObsEnv16x11,
     SoccerBlue0v3IndAgObsEnv16x11,
     SoccerGame6HIndAgObsEnv16x11N3,
+    SoccerGreen4v0IndAgObsEnv16x11,
+    SoccerBlue0v4IndAgObsEnv16x11,
+    SoccerGreen5v0IndAgObsEnv16x11,
+    SoccerBlue0v5IndAgObsEnv16x11,
+    SoccerGreen6v0IndAgObsEnv16x11,
+    SoccerBlue0v6IndAgObsEnv16x11,
+    SoccerGame8HIndAgObsEnv16x11N4,
 )
 from .collect_game import (
     CollectGame3HIndAgObsEnv10x10N3,
@@ -53,6 +60,13 @@ from .basketball_game import (
     BasketballBlue0v2IndAgObsEnv19x11,
     BasketballGreen3v0IndAgObsEnv19x11,
     BasketballBlue0v3IndAgObsEnv19x11,
+    BasketballGreen4v0IndAgObsEnv19x11,
+    BasketballBlue0v4IndAgObsEnv19x11,
+    BasketballGreen5v0IndAgObsEnv19x11,
+    BasketballBlue0v5IndAgObsEnv19x11,
+    BasketballGreen6v0IndAgObsEnv19x11,
+    BasketballBlue0v6IndAgObsEnv19x11,
+    BasketballGame8HIndAgObsEnv19x11N4,
 )
 from .american_football_game import (
     AmericanFootballSoloGreenEnv16x11,
@@ -64,6 +78,13 @@ from .american_football_game import (
     AmericanFootballBlue0v2Env16x11,
     AmericanFootballGreen3v0Env16x11,
     AmericanFootballBlue0v3Env16x11,
+    AmericanFootballGreen4v0Env16x11,
+    AmericanFootballBlue0v4Env16x11,
+    AmericanFootballGreen5v0Env16x11,
+    AmericanFootballBlue0v5Env16x11,
+    AmericanFootballGreen6v0Env16x11,
+    AmericanFootballBlue0v6Env16x11,
+    AmericanFootball4v4Env16x11,
 )
 from ..wrappers import TeamObsWrapper, GlobalObsWrapper
 
@@ -108,6 +129,41 @@ class Soccer3v3TeamObsEnv(TeamObsWrapper):
     def __init__(self, **kwargs):
         super().__init__(SoccerGame6HIndAgObsEnv16x11N3(**kwargs))
 
+class SoccerGreen4v0TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerGreen4v0IndAgObsEnv16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerGreen4v0IndAgObsEnv16x11(**kwargs))
+
+class SoccerBlue0v4TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerBlue0v4IndAgObsEnv16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerBlue0v4IndAgObsEnv16x11(**kwargs))
+
+class SoccerGreen5v0TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerGreen5v0IndAgObsEnv16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerGreen5v0IndAgObsEnv16x11(**kwargs))
+
+class SoccerBlue0v5TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerBlue0v5IndAgObsEnv16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerBlue0v5IndAgObsEnv16x11(**kwargs))
+
+class SoccerGreen6v0TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerGreen6v0IndAgObsEnv16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerGreen6v0IndAgObsEnv16x11(**kwargs))
+
+class SoccerBlue0v6TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerBlue0v6IndAgObsEnv16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerBlue0v6IndAgObsEnv16x11(**kwargs))
+
+class Soccer4v4TeamObsEnv(TeamObsWrapper):
+    metadata = SoccerGame8HIndAgObsEnv16x11N4.metadata
+    def __init__(self, **kwargs):
+        super().__init__(SoccerGame8HIndAgObsEnv16x11N4(**kwargs))
+
 # Basketball
 class Basketball1v1TeamObsEnv(TeamObsWrapper):
     metadata = BasketballGame2HIndAgObsEnv19x11N1.metadata
@@ -143,6 +199,41 @@ class BasketballBlue0v3TeamObsEnv(TeamObsWrapper):
     metadata = BasketballBlue0v3IndAgObsEnv19x11.metadata
     def __init__(self, **kwargs):
         super().__init__(BasketballBlue0v3IndAgObsEnv19x11(**kwargs))
+
+class BasketballGreen4v0TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballGreen4v0IndAgObsEnv19x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballGreen4v0IndAgObsEnv19x11(**kwargs))
+
+class BasketballBlue0v4TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballBlue0v4IndAgObsEnv19x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballBlue0v4IndAgObsEnv19x11(**kwargs))
+
+class BasketballGreen5v0TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballGreen5v0IndAgObsEnv19x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballGreen5v0IndAgObsEnv19x11(**kwargs))
+
+class BasketballBlue0v5TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballBlue0v5IndAgObsEnv19x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballBlue0v5IndAgObsEnv19x11(**kwargs))
+
+class BasketballGreen6v0TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballGreen6v0IndAgObsEnv19x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballGreen6v0IndAgObsEnv19x11(**kwargs))
+
+class BasketballBlue0v6TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballBlue0v6IndAgObsEnv19x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballBlue0v6IndAgObsEnv19x11(**kwargs))
+
+class Basketball4v4TeamObsEnv(TeamObsWrapper):
+    metadata = BasketballGame8HIndAgObsEnv19x11N4.metadata
+    def __init__(self, **kwargs):
+        super().__init__(BasketballGame8HIndAgObsEnv19x11N4(**kwargs))
 
 # Collect
 class Collect2v2TeamObsEnv(TeamObsWrapper):
@@ -181,6 +272,41 @@ class AmericanFootballBlue0v3TeamObsEnv(TeamObsWrapper):
     def __init__(self, **kwargs):
         super().__init__(AmericanFootballBlue0v3Env16x11(**kwargs))
 
+class AmericanFootballGreen4v0TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootballGreen4v0Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootballGreen4v0Env16x11(**kwargs))
+
+class AmericanFootballBlue0v4TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootballBlue0v4Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootballBlue0v4Env16x11(**kwargs))
+
+class AmericanFootballGreen5v0TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootballGreen5v0Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootballGreen5v0Env16x11(**kwargs))
+
+class AmericanFootballBlue0v5TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootballBlue0v5Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootballBlue0v5Env16x11(**kwargs))
+
+class AmericanFootballGreen6v0TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootballGreen6v0Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootballGreen6v0Env16x11(**kwargs))
+
+class AmericanFootballBlue0v6TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootballBlue0v6Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootballBlue0v6Env16x11(**kwargs))
+
+class AmericanFootball4v4TeamObsEnv(TeamObsWrapper):
+    metadata = AmericanFootball4v4Env16x11.metadata
+    def __init__(self, **kwargs):
+        super().__init__(AmericanFootball4v4Env16x11(**kwargs))
+
 
 # -----------------------------------------------------------------------
 # Environment registry (v6.8.0)
@@ -211,6 +337,21 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-S-B-0v2-TeamObs-v1':   (SoccerBlue0v2TeamObsEnv,           {}),
     'MosaicMultiGrid-S-B-0v3-IndAgObs-v1':  (SoccerBlue0v3IndAgObsEnv16x11,     {}),
     'MosaicMultiGrid-S-B-0v3-TeamObs-v1':   (SoccerBlue0v3TeamObsEnv,           {}),
+    'MosaicMultiGrid-S-G-4v0-IndAgObs-v1':  (SoccerGreen4v0IndAgObsEnv16x11,    {}),
+    'MosaicMultiGrid-S-G-4v0-TeamObs-v1':   (SoccerGreen4v0TeamObsEnv,          {}),
+    'MosaicMultiGrid-S-B-0v4-IndAgObs-v1':  (SoccerBlue0v4IndAgObsEnv16x11,     {}),
+    'MosaicMultiGrid-S-B-0v4-TeamObs-v1':   (SoccerBlue0v4TeamObsEnv,           {}),
+    'MosaicMultiGrid-S-G-5v0-IndAgObs-v1':  (SoccerGreen5v0IndAgObsEnv16x11,    {}),
+    'MosaicMultiGrid-S-G-5v0-TeamObs-v1':   (SoccerGreen5v0TeamObsEnv,          {}),
+    'MosaicMultiGrid-S-B-0v5-IndAgObs-v1':  (SoccerBlue0v5IndAgObsEnv16x11,     {}),
+    'MosaicMultiGrid-S-B-0v5-TeamObs-v1':   (SoccerBlue0v5TeamObsEnv,           {}),
+    'MosaicMultiGrid-S-G-6v0-IndAgObs-v1':  (SoccerGreen6v0IndAgObsEnv16x11,    {}),
+    'MosaicMultiGrid-S-G-6v0-TeamObs-v1':   (SoccerGreen6v0TeamObsEnv,          {}),
+    'MosaicMultiGrid-S-B-0v6-IndAgObs-v1':  (SoccerBlue0v6IndAgObsEnv16x11,     {}),
+    'MosaicMultiGrid-S-B-0v6-TeamObs-v1':   (SoccerBlue0v6TeamObsEnv,           {}),
+    # 4v4 symmetric competitive
+    'MosaicMultiGrid-S-4v4-IndAgObs-v1':    (SoccerGame8HIndAgObsEnv16x11N4,    {}),
+    'MosaicMultiGrid-S-4v4-TeamObs-v1':     (Soccer4v4TeamObsEnv,               {}),
 
     # -------------------------------------------------------------------
     # Basketball (BB) — 19x11 grid
@@ -234,6 +375,21 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-BB-B-0v2-TeamObs-v1':  (BasketballBlue0v2TeamObsEnv,         {}),
     'MosaicMultiGrid-BB-B-0v3-IndAgObs-v1': (BasketballBlue0v3IndAgObsEnv19x11,   {}),
     'MosaicMultiGrid-BB-B-0v3-TeamObs-v1':  (BasketballBlue0v3TeamObsEnv,         {}),
+    'MosaicMultiGrid-BB-G-4v0-IndAgObs-v1': (BasketballGreen4v0IndAgObsEnv19x11,  {}),
+    'MosaicMultiGrid-BB-G-4v0-TeamObs-v1':  (BasketballGreen4v0TeamObsEnv,        {}),
+    'MosaicMultiGrid-BB-B-0v4-IndAgObs-v1': (BasketballBlue0v4IndAgObsEnv19x11,   {}),
+    'MosaicMultiGrid-BB-B-0v4-TeamObs-v1':  (BasketballBlue0v4TeamObsEnv,         {}),
+    'MosaicMultiGrid-BB-G-5v0-IndAgObs-v1': (BasketballGreen5v0IndAgObsEnv19x11,  {}),
+    'MosaicMultiGrid-BB-G-5v0-TeamObs-v1':  (BasketballGreen5v0TeamObsEnv,        {}),
+    'MosaicMultiGrid-BB-B-0v5-IndAgObs-v1': (BasketballBlue0v5IndAgObsEnv19x11,   {}),
+    'MosaicMultiGrid-BB-B-0v5-TeamObs-v1':  (BasketballBlue0v5TeamObsEnv,         {}),
+    'MosaicMultiGrid-BB-G-6v0-IndAgObs-v1': (BasketballGreen6v0IndAgObsEnv19x11,  {}),
+    'MosaicMultiGrid-BB-G-6v0-TeamObs-v1':  (BasketballGreen6v0TeamObsEnv,        {}),
+    'MosaicMultiGrid-BB-B-0v6-IndAgObs-v1': (BasketballBlue0v6IndAgObsEnv19x11,   {}),
+    'MosaicMultiGrid-BB-B-0v6-TeamObs-v1':  (BasketballBlue0v6TeamObsEnv,         {}),
+    # 4v4 symmetric competitive
+    'MosaicMultiGrid-BB-4v4-IndAgObs-v1':   (BasketballGame8HIndAgObsEnv19x11N4,  {}),
+    'MosaicMultiGrid-BB-4v4-TeamObs-v1':    (Basketball4v4TeamObsEnv,             {}),
 
     # -------------------------------------------------------------------
     # American Football (AF) — 16x11 grid
@@ -256,6 +412,21 @@ CONFIGURATIONS: dict[str, tuple[type, dict]] = {
     'MosaicMultiGrid-AF-B-0v2-TeamObs-v1':  (AmericanFootballBlue0v2TeamObsEnv,   {}),
     'MosaicMultiGrid-AF-B-0v3-IndAgObs-v1': (AmericanFootballBlue0v3Env16x11,     {}),
     'MosaicMultiGrid-AF-B-0v3-TeamObs-v1':  (AmericanFootballBlue0v3TeamObsEnv,   {}),
+    'MosaicMultiGrid-AF-G-4v0-IndAgObs-v1': (AmericanFootballGreen4v0Env16x11,    {}),
+    'MosaicMultiGrid-AF-G-4v0-TeamObs-v1':  (AmericanFootballGreen4v0TeamObsEnv,  {}),
+    'MosaicMultiGrid-AF-B-0v4-IndAgObs-v1': (AmericanFootballBlue0v4Env16x11,     {}),
+    'MosaicMultiGrid-AF-B-0v4-TeamObs-v1':  (AmericanFootballBlue0v4TeamObsEnv,   {}),
+    'MosaicMultiGrid-AF-G-5v0-IndAgObs-v1': (AmericanFootballGreen5v0Env16x11,    {}),
+    'MosaicMultiGrid-AF-G-5v0-TeamObs-v1':  (AmericanFootballGreen5v0TeamObsEnv,  {}),
+    'MosaicMultiGrid-AF-B-0v5-IndAgObs-v1': (AmericanFootballBlue0v5Env16x11,     {}),
+    'MosaicMultiGrid-AF-B-0v5-TeamObs-v1':  (AmericanFootballBlue0v5TeamObsEnv,   {}),
+    'MosaicMultiGrid-AF-G-6v0-IndAgObs-v1': (AmericanFootballGreen6v0Env16x11,    {}),
+    'MosaicMultiGrid-AF-G-6v0-TeamObs-v1':  (AmericanFootballGreen6v0TeamObsEnv,  {}),
+    'MosaicMultiGrid-AF-B-0v6-IndAgObs-v1': (AmericanFootballBlue0v6Env16x11,     {}),
+    'MosaicMultiGrid-AF-B-0v6-TeamObs-v1':  (AmericanFootballBlue0v6TeamObsEnv,   {}),
+    # 4v4 symmetric competitive
+    'MosaicMultiGrid-AF-4v4-IndAgObs-v1':   (AmericanFootball4v4Env16x11,         {}),
+    'MosaicMultiGrid-AF-4v4-TeamObs-v1':    (AmericanFootball4v4TeamObsEnv,       {}),
 
     # -------------------------------------------------------------------
     # Collect (C) — 10x10 grid

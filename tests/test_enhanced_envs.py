@@ -40,7 +40,7 @@ class TestSoccerEnhanced:
         assert env.num_agents == 4
         assert env.width == 16  # FIFA aspect ratio
         assert env.height == 11
-        assert env.max_steps == 200  # Default for RL training
+        assert env.max_steps == 256  # Default for RL training
         assert env.goals_to_win == 2
         assert env.steal_cooldown == 10
 

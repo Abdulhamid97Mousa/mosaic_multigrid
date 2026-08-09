@@ -531,11 +531,11 @@ class BasketballGame6HIndAgObsEnv19x11N3(BasketballGameIndAgObsEnv):
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
     - Teleport passing to any teammate
-    - 200 max_steps (enough for 2-3 scoring attempts)
+    - 256 max_steps (enough for 2-3 scoring attempts)
     """
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -572,7 +572,7 @@ class BasketballSoloGreenIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     """
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -605,7 +605,7 @@ class BasketballSoloBlueIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     """
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -628,7 +628,7 @@ class BasketballSoloBlueIndAgObsEnv19x11(BasketballGameIndAgObsEnv):
 class BasketballGame2HIndAgObsEnv19x11N1(BasketballGameIndAgObsEnv):
     """IndAgObs 1vs1 Basketball (19x11 total)."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=19, height=11,
@@ -641,7 +641,7 @@ class BasketballGame2HIndAgObsEnv19x11N1(BasketballGameIndAgObsEnv):
 class BasketballGame4HIndAgObsEnv19x11N2(BasketballGameIndAgObsEnv):
     """IndAgObs 2vs2 Basketball (19x11 total)."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=19, height=11,
@@ -654,7 +654,7 @@ class BasketballGame4HIndAgObsEnv19x11N2(BasketballGameIndAgObsEnv):
 class BasketballGreen2v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     """2 Green agents, 0 Blue — cooperative basketball practice."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=19, height=11,
@@ -667,7 +667,7 @@ class BasketballGreen2v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
 class BasketballBlue0v2IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     """0 Green agents, 2 Blue — cooperative basketball practice."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=19, height=11,
@@ -680,7 +680,7 @@ class BasketballBlue0v2IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
 class BasketballGreen3v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     """3 Green agents, 0 Blue — cooperative basketball practice."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=19, height=11,
@@ -693,11 +693,110 @@ class BasketballGreen3v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
 class BasketballBlue0v3IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
     """0 Green agents, 3 Blue — cooperative basketball practice."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=19, height=11,
             goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
             num_balls=[1], agents_index=[2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+# -----------------------------------------------------------------------
+# 4v0 / 0v4 / 5v0 / 0v5 / 6v0 / 0v6 one-sided variants (cooperative)
+# -----------------------------------------------------------------------
+
+class BasketballGreen4v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """4 Green agents, 0 Blue — cooperative basketball practice."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballBlue0v4IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """0 Green agents, 4 Blue — cooperative basketball practice."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGreen5v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """5 Green agents, 0 Blue — cooperative basketball practice."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballBlue0v5IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """0 Green agents, 5 Blue — cooperative basketball practice."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[2, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGreen6v0IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """6 Green agents, 0 Blue — cooperative basketball practice."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballBlue0v6IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """0 Green agents, 6 Blue — cooperative basketball practice."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[2, 2, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+# -----------------------------------------------------------------------
+# 4v4 variant
+# -----------------------------------------------------------------------
+
+class BasketballGame8HIndAgObsEnv19x11N4(BasketballGameIndAgObsEnv):
+    """IndAgObs 4v4 Basketball (19x11 total)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 2, 2, 2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )

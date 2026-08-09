@@ -520,3 +520,103 @@ class AmericanFootballBlue0v3Env16x11(AmericanFootballEnv):
             zero_sum=False, goals_to_win=2,
             render_mode=render_mode, reward_shaping=reward_shaping,
         )
+
+
+# ============================================================================
+# 4v0 / 0v4 / 5v0 / 0v5 / 6v0 / 0v6 one-sided variants (cooperative)
+# ============================================================================
+
+class AmericanFootballGreen4v0Env16x11(AmericanFootballEnv):
+    """4 Green agents, 0 Blue — cooperative AF practice without opposition."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 0],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootballBlue0v4Env16x11(AmericanFootballEnv):
+    """0 Green agents, 4 Blue — cooperative AF practice without opposition."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[1, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootballGreen5v0Env16x11(AmericanFootballEnv):
+    """5 Green agents, 0 Blue — cooperative AF practice without opposition."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 0, 0],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootballBlue0v5Env16x11(AmericanFootballEnv):
+    """0 Green agents, 5 Blue — cooperative AF practice without opposition."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[1, 1, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootballGreen6v0Env16x11(AmericanFootballEnv):
+    """6 Green agents, 0 Blue — cooperative AF practice without opposition."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 0, 0, 0],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootballBlue0v6Env16x11(AmericanFootballEnv):
+    """0 Green agents, 6 Blue — cooperative AF practice without opposition."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[1, 1, 1, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+# ============================================================================
+# 4v4 Variant
+# ============================================================================
+
+class AmericanFootball4v4Env16x11(AmericanFootballEnv):
+    """4v4 American Football (4 Green vs 4 Blue)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 0, 1, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode,
+            reward_shaping=reward_shaping,
+        )

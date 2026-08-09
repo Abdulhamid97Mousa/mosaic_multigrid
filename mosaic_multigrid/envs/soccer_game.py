@@ -589,12 +589,12 @@ class SoccerGame4HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
     - First to 2 goals wins
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
-    - 200 max_steps (enough for 2-3 scoring attempts)
+    - 256 max_steps (enough for 2-3 scoring attempts)
     """
 
     def __init__(self, **kwargs):
         # Set default max_steps for RL training (can be overridden)
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -624,12 +624,12 @@ class SoccerGame2HIndAgObsEnv16x11N2(SoccerGameIndAgObsEnv):
     - First to 2 goals wins
     - Ball respawns after each goal
     - 10-step dual cooldown on stealing
-    - 200 max_steps
+    - 256 max_steps
     """
 
     def __init__(self, **kwargs):
         # Set default max_steps for RL training (can be overridden)
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -666,7 +666,7 @@ class SoccerSoloGreenIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     """
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -699,7 +699,7 @@ class SoccerSoloBlueIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     """
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None,
@@ -722,7 +722,7 @@ class SoccerSoloBlueIndAgObsEnv16x11(SoccerGameIndAgObsEnv):
 class SoccerGreen2v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     """2 Green agents, 0 Blue — cooperative practice without opposition."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
@@ -735,7 +735,7 @@ class SoccerGreen2v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
 class SoccerBlue0v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     """0 Green agents, 2 Blue — cooperative practice without opposition."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
@@ -748,7 +748,7 @@ class SoccerBlue0v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
 class SoccerGreen3v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     """3 Green agents, 0 Blue — cooperative practice without opposition."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
@@ -761,7 +761,7 @@ class SoccerGreen3v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
 class SoccerBlue0v3IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
     """0 Green agents, 3 Blue — cooperative practice without opposition."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
@@ -778,11 +778,110 @@ class SoccerBlue0v3IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
 class SoccerGame6HIndAgObsEnv16x11N3(SoccerGameIndAgObsEnv):
     """IndAgObs 3v3 Soccer (16x11, 3 Green vs 3 Blue)."""
     def __init__(self, **kwargs):
-        kwargs.setdefault('max_steps', 200)
+        kwargs.setdefault('max_steps', 256)
         kwargs.setdefault('goals_to_win', 2)
         super().__init__(
             size=None, width=16, height=11,
             goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
             num_balls=[1], agents_index=[1, 1, 1, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+# -----------------------------------------------------------------------
+# 4v0 / 0v4 / 5v0 / 0v5 / 6v0 / 0v6 one-sided variants (cooperative)
+# -----------------------------------------------------------------------
+
+class SoccerGreen4v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """4 Green agents, 0 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerBlue0v4IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """0 Green agents, 4 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGreen5v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """5 Green agents, 0 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerBlue0v5IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """0 Green agents, 5 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[2, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGreen6v0IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """6 Green agents, 0 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 1, 1], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerBlue0v6IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """0 Green agents, 6 Blue — cooperative practice without opposition."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[2, 2, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+# -----------------------------------------------------------------------
+# 4v4 variant
+# -----------------------------------------------------------------------
+
+class SoccerGame8HIndAgObsEnv16x11N4(SoccerGameIndAgObsEnv):
+    """IndAgObs 4v4 Soccer (16x11, 4 Green vs 4 Blue)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 2, 2, 2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )

@@ -194,10 +194,10 @@ class TestBasketballGameplay:
 
     def test_truncation_at_max_steps(self, env_ind):
         env_ind.reset(seed=SEED)
-        for _ in range(200):
+        for _ in range(256):
             action = {i: env_ind.action_space[i].sample() for i in range(6)}
             _, _, terms, truncs, _ = env_ind.step(action)
-        # At step 200, should be truncated (if no team scored 2 goals)
+        # At step 256, should be truncated (if no team scored 2 goals)
         assert any(truncs.values())
 
     def test_no_zero_sum_penalty(self, env_ind):
