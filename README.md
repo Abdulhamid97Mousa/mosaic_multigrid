@@ -186,7 +186,7 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 ### Soccer (S) — 16×11 grid
 
 <p align="center">
-  <img src="figures/envs_S.png" width="900" alt="All Soccer environments">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/envs_S.png" width="900" alt="All Soccer environments">
 </p>
 
 | Environment ID | Agents | Description |
@@ -206,7 +206,7 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 ### Basketball (BB) — 19×11 grid
 
 <p align="center">
-  <img src="figures/envs_BB.png" width="900" alt="All Basketball environments">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/envs_BB.png" width="900" alt="All Basketball environments">
 </p>
 
 | Environment ID | Agents | Description |
@@ -226,7 +226,7 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 ### American Football (AF) — 16×11 grid
 
 <p align="center">
-  <img src="figures/envs_AF.png" width="900" alt="All American Football environments">
+  <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/envs_AF.png" width="900" alt="All American Football environments">
 </p>
 
 | Environment ID | Agents | Description |
