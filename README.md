@@ -85,7 +85,7 @@ Showing how we combined the best of both packages:
 
 ## Included Environments
 
-### SoccerGame (IndAgObs -- Recommended)
+### SoccerGame
 
 <p align="center">
   <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/Gym-MosaicMultiGrid-Soccer-2v2-IndAgObs-v1.png" width="480">
