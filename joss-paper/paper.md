@@ -229,6 +229,18 @@ realized use in an ongoing research program beyond a purely
 methodological contribution.
 
 
+# AI usage disclosure
+
+Generative AI tools, specifically Claude Sonnet 4.5 (Anthropic,
+2025) and GPT-5.1 (OpenAI, 2025), were used mainly for language
+polishing and documentation drafting of this manuscript, and for
+minor code refactoring assistance. All scientific content, software
+design decisions, implementation, and validation results were
+conceived, written, and verified by the authors; the majority of
+the codebase was authored directly by the authors rather than
+produced through autonomous or "vibe coding" workflows.
+
+
 # Acknowledgements
 
 We gratefully acknowledge the upstream authors of `gym-multigrid`
