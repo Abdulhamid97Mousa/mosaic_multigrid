@@ -30,3 +30,6 @@ htmlcov/
 
 # PyPI credentials (NEVER commit!)
 .pypirc
+
+# JOSS paper
+joss-paper/*

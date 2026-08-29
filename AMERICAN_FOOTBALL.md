@@ -159,13 +159,6 @@ When an agent uses the drop action while carrying:
 | `MosaicMultiGrid-AmericanFootball-2v2-IndAgObs-v1` | 4 | 2v2 | Yes |
 | `MosaicMultiGrid-AmericanFootball-3v3-IndAgObs-v1` | 6 | 3v3 | Yes |
 
-### TeamObs (SMAC-style teammate awareness)
-
-| Environment ID | Agents | Extra Obs |
-|----------------|--------|-----------|
-| `MosaicMultiGrid-AmericanFootball-2v2-TeamObs-v1` | 4 | teammate positions, directions, has_ball |
-| `MosaicMultiGrid-AmericanFootball-3v3-TeamObs-v1` | 6 | teammate positions, directions, has_ball |
-
 ### Configurable View Size
 
 All variants accept `view_size` as a constructor parameter:
@@ -198,16 +191,6 @@ info[agent_id]["steal_completed"]  # {"step": 55, "stealer": 1, "victim": 0, "te
 info[agent_id]["position"]   # (x, y) tuple
 info[agent_id]["carrying"]   # True/False
 ```
-
-## Comparison with SMAC
-
-| Dimension | SMAC | American Football |
-|-----------|------|-------------------|
-| **Reward density** | Dense (damage/step) | Dense (pickup + distance shaping) |
-| **Reward flag** | `reward_sparse=True` | `reward_shaping=False` |
-| **Observation** | Flattened features (~100 dims) | Image grid (3x3x3 or 7x7x3) |
-| **Opponent** | Scripted bot (stationary) | Learning agent (non-stationary) |
-| **Coordination** | Cooperative (all vs AI) | Competitive (team vs team) |
 
 ## Rendering
 

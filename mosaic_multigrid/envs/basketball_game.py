@@ -800,3 +800,133 @@ class BasketballGame8HIndAgObsEnv19x11N4(BasketballGameIndAgObsEnv):
             num_balls=[1], agents_index=[1, 1, 1, 1, 2, 2, 2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )
+
+
+class BasketballGame1v2IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """1 Green vs 2 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame2v1IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """2 Green vs 1 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame1v3IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """1 Green vs 3 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame3v1IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """3 Green vs 1 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame1v4IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """1 Green vs 4 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame4v1IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """4 Green vs 1 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame2v3IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """2 Green vs 3 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame3v2IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """3 Green vs 2 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame2v4IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """2 Green vs 4 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class BasketballGame4v2IndAgObsEnv19x11(BasketballGameIndAgObsEnv):
+    """4 Green vs 2 Blue asymmetric competitive Basketball (19x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=19, height=11,
+            goal_pos=[[1, 5], [17, 5]], goal_index=[1, 2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )

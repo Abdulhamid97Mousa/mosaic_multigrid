@@ -620,3 +620,133 @@ class AmericanFootball4v4Env16x11(AmericanFootballEnv):
             render_mode=render_mode,
             reward_shaping=reward_shaping,
         )
+
+
+class AmericanFootball1v2Env16x11(AmericanFootballEnv):
+    """1 Green vs 2 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball2v1Env16x11(AmericanFootballEnv):
+    """2 Green vs 1 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball1v3Env16x11(AmericanFootballEnv):
+    """1 Green vs 3 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball3v1Env16x11(AmericanFootballEnv):
+    """3 Green vs 1 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball1v4Env16x11(AmericanFootballEnv):
+    """1 Green vs 4 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 1, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball4v1Env16x11(AmericanFootballEnv):
+    """4 Green vs 1 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 0, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball2v3Env16x11(AmericanFootballEnv):
+    """2 Green vs 3 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball3v2Env16x11(AmericanFootballEnv):
+    """3 Green vs 2 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball2v4Env16x11(AmericanFootballEnv):
+    """2 Green vs 4 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 1, 1, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )
+
+
+class AmericanFootball4v2Env16x11(AmericanFootballEnv):
+    """4 Green vs 2 Blue asymmetric competitive American Football (16x11)."""
+    def __init__(self, render_mode: str | None = None, view_size: int = 3,
+                 reward_shaping: bool = True):
+        super().__init__(
+            width=16, height=11, view_size=view_size,
+            num_balls=1, agents_index=[0, 0, 0, 0, 1, 1],
+            balls_index=[0], balls_reward=[1.0],
+            zero_sum=False, goals_to_win=2,
+            render_mode=render_mode, reward_shaping=reward_shaping,
+        )

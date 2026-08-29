@@ -260,12 +260,9 @@ for step in range(300):
 - Clear winner determination
 - No wasted computation
 
-**Note:** TeamObs is not applicable to this variant because each agent is on
-its own team (`agents_index=[1,2,3]`), meaning N=0 teammates per agent.
-
 ---
 
-### **MosaicMultiGrid-C-2v2-IndAgObs-v1** (Recommended)
+### **MosaicMultiGrid-C-2v2-IndAgObs-v1** (Recommended for 2v2)
 
 **Status:** [RECOMMENDED] For 2v2 team competition with independent views
 
@@ -279,54 +276,15 @@ obs, _ = env.reset()
 
 ---
 
-### **MosaicMultiGrid-C-2v2-TeamObs-v1** (Recommended for team coordination)
-
-**Status:** [RECOMMENDED] For 2v2 team competition with teammate awareness
-
-```python
-# TeamObs variant -- SMAC-style teammate awareness
-env = gym.make('MosaicMultiGrid-C-2v2-TeamObs-v1', render_mode='rgb_array')
-obs, _ = env.reset()
-
-# Each agent's observation now includes teammate features:
-print(obs[0].keys())
-# dict_keys(['image', 'direction', 'mission',
-#            'teammate_positions', 'teammate_directions', 'teammate_has_ball'])
-
-# Agent 0 knows where teammate Agent 1 is:
-print(obs[0]['teammate_positions'])    # [[dx, dy]] relative position
-print(obs[0]['teammate_has_ball'])     # [0/1] carrying status
-```
-
-**What it adds** (over Collect-2vs2-Enhanced-v0):
-
-| Feature | Shape | Description |
-|---------|-------|-------------|
-| `teammate_positions` | (N, 2) int64 | Relative (dx, dy) from self to each teammate |
-| `teammate_directions` | (N,) int64 | Direction each teammate faces (0-3) |
-| `teammate_has_ball` | (N,) int64 | 1 if teammate carries ball, 0 otherwise |
-
-Where N = number of teammates (1 in Collect 2v2).
-
-**Why this exists:** On a 10x10 field with `view_size=3`, agents see only
-9% of the grid. Teammates almost never appear in the 3x3 window. Without
-TeamObs, agents cannot coordinate ball collection. With TeamObs, agents can
-learn to split coverage (e.g., "teammate is in top-right, I go bottom-left").
-
-**Design rationale:** Follows the SMAC observation augmentation pattern
-(Samvelyan et al., 2019). See SOCCER_IMPROVEMENTS.md for full explanation.
-
----
-
 ### **Environment Comparison**
 
-| Aspect | `Collect-v0` | `Collect-Enhanced-v0` | `Collect-2vs2-Enhanced-v0` | `Collect-2vs2-TeamObs-v0` |
-|--------|-------------|----------------------|--------------------------|--------------------------|
-| **Status** | Deprecated | Recommended | Recommended | Recommended |
-| **Agents** | 3 (individual) | 3 (individual) | 4 (2v2 teams) | 4 (2v2 teams) |
-| **Termination** | Never | All balls collected | All balls collected | All balls collected |
-| **Teammate info** | N/A | N/A (individual) | None (independent views) | Positions + directions + has_ball |
-| **Use case** | Legacy only | Individual competition | Team competition | Team coordination research |
+| Aspect | `Collect-v0` | `Collect-Enhanced-v0` | `Collect-2vs2-Enhanced-v0` |
+|--------|-------------|----------------------|--------------------------|
+| **Status** | Deprecated | Recommended | Recommended |
+| **Agents** | 3 (individual) | 3 (individual) | 4 (2v2 teams) |
+| **Termination** | Never | All balls collected | All balls collected |
+| **Teammate info** | N/A | N/A (individual) | None (independent views) |
+| **Use case** | Legacy only | Individual competition | Team competition |
 
 ---
 
@@ -456,7 +414,6 @@ The observation space shape changes from `(7, 7, 3)` to `(3, 3, 3)`.
 | Computational waste | 95% wasted | [FIXED] 0% wasted |
 | Draw possibility (2v2) | Possible (even balls) | [FIXED] Impossible (7 balls) |
 | view_size (Collect) | 7 (inconsistent with Soccer) | [FIXED] 3 (matches Soccer) |
-| Teammate awareness (2v2) | None (independent views) | [NEW] TeamObs variant (SMAC-style) |
 
 ---
 
@@ -468,4 +425,3 @@ The Collect environment improvements are critical for RL research:
 - **Clear termination signal** (better for RL convergence)
 - **Guaranteed winner** (7 balls in team variant)
 - **Consistent partial observability** (view_size=3, matches Soccer)
-- **TeamObs variant** for 2v2 team coordination research (SMAC-style)

@@ -37,8 +37,7 @@ We kept the **challenging partial observability** (`view_size=3`) that makes Soc
 2. **Numba JIT optimization** - 10-100x faster observation generation
 3. **Comprehensive tests** - 130+ tests covering all functionality
 4. **Framework adapters** - PettingZoo Parallel, AEC (Environment Agent Cycle) integration
-5. **Observation wrappers** - FullyObs, ImgObs, OneHot, SingleAgent, TeamObs (SMAC-style)
-6. **TeamObs environments** - SMAC-style teammate awareness for team coordination research
+5. **Observation wrappers** - FullyObs, ImgObs, OneHot, SingleAgent
 ---
 
 ## What Changed from Upstream: The Full Story
@@ -123,14 +122,8 @@ Team-based competitive collection. 4 agents in 2 teams (2v2) compete to collect 
 
 **IndAgObs variant:** `SoccerGame2HIndAgObsEnv16x11N2` -- 2 agents (1v1), 16x11 grid, 1 ball, positive-only shared team reward, max_steps=200.
 
-### Collect 1v1 (Team-Based Collection)
 
-1v1 variant of the team-based Collect environment. Two agents on separate teams compete to collect 3 wildcard balls on a 10x10 grid. **3 balls (odd number) ensures no draws.** Natural termination when all balls are collected.
-
-**IndAgObs variant (recommended):** `CollectGame2HIndAgObsEnv10x10N2` -- 2 agents (1v1), 10x10 grid, 3 balls, zero-sum, max_steps=200.
-**Base variant:** `CollectGame2HIndAgObsEnv10x10N2` — same configuration, IndAgObs variant recommended.
-
-### Solo Environments (New in v6.0.0)
+### Solo and Cooperative Environments 
 
 Single-agent variants of Soccer and Basketball with **no opponent on the field**. Designed for curriculum pre-training where the agent learns ball pickup, navigation, and scoring mechanics before facing an opponent.
 
@@ -163,7 +156,7 @@ env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1', view_size=7)
 - Steal cooldown: never triggered
 - First-to-2-goals termination: still works (agent can score twice to end early)
 
-### BasketballGame (3v3 -- New in v4.0.0)
+### BasketballGame 
 
 <p align="center">
   <img src="https://github.com/Abdulhamid97Mousa/mosaic_multigrid/raw/main/figures/basketball_3vs3_render.png" width="480">
@@ -172,22 +165,21 @@ env = gym.make('MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1', view_size=7)
 Team-based competitive basketball on a 19x11 grid (17x9 playable area). Agents score by dropping the ball at the opposing team's basket (goal on the baseline). Features **teleport passing**, stealing with dual cooldown, ball respawn, first-to-2-goals termination, and **basketball-court rendering** with three-point arcs, paint rectangles, and center circle.
 
 **IndAgObs variant:** `BasketballGame6HIndAgObsEnv19x11N3` — 6 agents (3v3), 19x11 grid, 1 ball, positive-only rewards, event tracking.
-**TeamObs variant:** `Basketball3v3TeamObsEnv` — IndAgObs + SMAC-style teammate awareness (2 teammates per agent).
 
 ---
 
-## Registered Environments (v6.8.0)
+## Registered Environments 
 
 All environments use v6.8.0 defaults: scoring +15.0, max_steps=300,
 ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity reward.
 
-**50 environments** across 4 sports. Naming scheme:
+**30 canonical environments** across 4 sports. Naming scheme:
 `MosaicMultiGrid-<Sport>-[Team-]<Format>-[ObsVariant-]v1`
 
 - **Sport:** `S` Soccer · `BB` Basketball · `AF` AmericanFootball · `C` Collect
-- **Team:** `G` Green-only · `B` Blue-only — omitted for symmetric matchups
+- **Team:** `G` Green-only · `B` Blue-only for symmetric matchups
 - **Format:** `NvM` (e.g. 1v0, 1v1, 2v2, 3v3)
-- **ObsVariant:** `IndAgObs` · `TeamObs` — omitted for solo (1v0 / 0v1) envs
+- **ObsVariant:** `IndAgObs` for solo (1v0 / 0v1) envs
 
 ---
 
@@ -203,17 +195,11 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 | `MosaicMultiGrid-S-B-0v1-v1` | 1 | Solo Blue — curriculum pre-training |
 | `MosaicMultiGrid-S-1v1-IndAgObs-v1` | 2 | 1v1 competitive |
 | `MosaicMultiGrid-S-2v2-IndAgObs-v1` | 4 | 2v2 competitive, independent 3×3 views |
-| `MosaicMultiGrid-S-2v2-TeamObs-v1` | 4 | 2v2 + SMAC teammate awareness |
 | `MosaicMultiGrid-S-3v3-IndAgObs-v1` | 6 | 3v3 competitive |
-| `MosaicMultiGrid-S-3v3-TeamObs-v1` | 6 | 3v3 + SMAC teammate awareness |
 | `MosaicMultiGrid-S-G-2v0-IndAgObs-v1` | 2 | 2 Green agents, cooperative |
-| `MosaicMultiGrid-S-G-2v0-TeamObs-v1` | 2 | 2 Green + teammate obs |
 | `MosaicMultiGrid-S-G-3v0-IndAgObs-v1` | 3 | 3 Green agents, cooperative |
-| `MosaicMultiGrid-S-G-3v0-TeamObs-v1` | 3 | 3 Green + teammate obs |
 | `MosaicMultiGrid-S-B-0v2-IndAgObs-v1` | 2 | 2 Blue agents, cooperative |
-| `MosaicMultiGrid-S-B-0v2-TeamObs-v1` | 2 | 2 Blue + teammate obs |
 | `MosaicMultiGrid-S-B-0v3-IndAgObs-v1` | 3 | 3 Blue agents, cooperative |
-| `MosaicMultiGrid-S-B-0v3-TeamObs-v1` | 3 | 3 Blue + teammate obs |
 
 ---
 
@@ -228,19 +214,12 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 | `MosaicMultiGrid-BB-G-1v0-v1` | 1 | Solo Green — curriculum pre-training |
 | `MosaicMultiGrid-BB-B-0v1-v1` | 1 | Solo Blue — curriculum pre-training |
 | `MosaicMultiGrid-BB-1v1-IndAgObs-v1` | 2 | 1v1 competitive |
-| `MosaicMultiGrid-BB-1v1-TeamObs-v1` | 2 | 1v1 + teammate obs |
 | `MosaicMultiGrid-BB-2v2-IndAgObs-v1` | 4 | 2v2 competitive |
-| `MosaicMultiGrid-BB-2v2-TeamObs-v1` | 4 | 2v2 + teammate obs |
 | `MosaicMultiGrid-BB-3v3-IndAgObs-v1` | 6 | 3v3 competitive |
-| `MosaicMultiGrid-BB-3v3-TeamObs-v1` | 6 | 3v3 + teammate obs |
 | `MosaicMultiGrid-BB-G-2v0-IndAgObs-v1` | 2 | 2 Green, cooperative |
-| `MosaicMultiGrid-BB-G-2v0-TeamObs-v1` | 2 | 2 Green + teammate obs |
 | `MosaicMultiGrid-BB-G-3v0-IndAgObs-v1` | 3 | 3 Green, cooperative |
-| `MosaicMultiGrid-BB-G-3v0-TeamObs-v1` | 3 | 3 Green + teammate obs |
 | `MosaicMultiGrid-BB-B-0v2-IndAgObs-v1` | 2 | 2 Blue, cooperative |
-| `MosaicMultiGrid-BB-B-0v2-TeamObs-v1` | 2 | 2 Blue + teammate obs |
 | `MosaicMultiGrid-BB-B-0v3-IndAgObs-v1` | 3 | 3 Blue, cooperative |
-| `MosaicMultiGrid-BB-B-0v3-TeamObs-v1` | 3 | 3 Blue + teammate obs |
 
 ---
 
@@ -256,17 +235,11 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 | `MosaicMultiGrid-AF-B-0v1-v1` | 1 | Solo Blue — curriculum pre-training |
 | `MosaicMultiGrid-AF-1v1-IndAgObs-v1` | 2 | 1v1 competitive |
 | `MosaicMultiGrid-AF-2v2-IndAgObs-v1` | 4 | 2v2 competitive, independent 3×3 views |
-| `MosaicMultiGrid-AF-2v2-TeamObs-v1` | 4 | 2v2 + SMAC teammate awareness |
 | `MosaicMultiGrid-AF-3v3-IndAgObs-v1` | 6 | 3v3 competitive |
-| `MosaicMultiGrid-AF-3v3-TeamObs-v1` | 6 | 3v3 + teammate obs |
 | `MosaicMultiGrid-AF-G-2v0-IndAgObs-v1` | 2 | 2 Green, cooperative |
-| `MosaicMultiGrid-AF-G-2v0-TeamObs-v1` | 2 | 2 Green + teammate obs |
 | `MosaicMultiGrid-AF-G-3v0-IndAgObs-v1` | 3 | 3 Green, cooperative |
-| `MosaicMultiGrid-AF-G-3v0-TeamObs-v1` | 3 | 3 Green + teammate obs |
 | `MosaicMultiGrid-AF-B-0v2-IndAgObs-v1` | 2 | 2 Blue, cooperative |
-| `MosaicMultiGrid-AF-B-0v2-TeamObs-v1` | 2 | 2 Blue + teammate obs |
 | `MosaicMultiGrid-AF-B-0v3-IndAgObs-v1` | 3 | 3 Blue, cooperative |
-| `MosaicMultiGrid-AF-B-0v3-TeamObs-v1` | 3 | 3 Blue + teammate obs |
 
 ---
 
@@ -277,7 +250,6 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 | `MosaicMultiGrid-C-IndAgObs-v1` | 3 | 3-agent individual competition |
 | `MosaicMultiGrid-C-1v1-IndAgObs-v1` | 2 | 1v1 team collection, 3 balls (no draws) |
 | `MosaicMultiGrid-C-2v2-IndAgObs-v1` | 4 | 2v2 team collection, 7 balls (no draws) |
-| `MosaicMultiGrid-C-2v2-TeamObs-v1` | 4 | 2v2 + SMAC-style teammate awareness |
 
 ### Critical Bugs Fixed
 
@@ -293,51 +265,9 @@ ball provenance tracking, pass-chain cap, timeout penalty −1.0, proximity rewa
 - **Result**: **35× faster training** (300 vs 10,000 steps per episode)
 
 
-## TeamObs Environments (v4.0.0) -- SMAC-Style Teammate Awareness
+## Documentation
 
-**For team coordination research**, TeamObs variants add structured teammate
-features to each agent's observation dict. This follows the standard MARL
-observation augmentation pattern established by SMAC (Samvelyan et al., 2019).
-
-### Why TeamObs?
-
-On a 16x11 field (Soccer) or 10x10 field (Collect) with `view_size=3`, each
-agent sees only **7-9% of the grid**. Teammates are almost never visible in
-the 3x3 local window. Without TeamObs:
-
-- Passing is **blind** (teleport to random teammate, no position knowledge)
-- Agents cannot coordinate coverage (both may search the same area)
-- Team strategies are limited to independent exploration
-
-With TeamObs, each agent receives its local view **unchanged**, plus:
-
-| Feature | Shape | Description |
-|---------|-------|-------------|
-| `teammate_positions` | (N, 2) int64 | Relative (dx, dy) from self to each teammate |
-| `teammate_directions` | (N,) int64 | Direction each teammate faces (0-3) |
-| `teammate_has_ball` | (N,) int64 | 1 if teammate carries ball, 0 otherwise |
-
-Where N = number of teammates per agent (1 in 2v2 environments, 2 in 3v3 Basketball).
-
-### Design Rationale
-
-This follows the observation augmentation pattern from:
-
-> Samvelyan, M., Rashid, T., de Witt, C. S., et al. (2019).
-> "The StarCraft Multi-Agent Challenge." CoRR, abs/1902.04043.
-
-In SMAC, each agent receives its local view plus structured ally features
-(relative positions, health, unit type). We adapt this for gridworld
-environments. Teammate features are **environment-level** observation
-augmentation -- the RL algorithm decides what to do with the extra
-information.
-
-**Not applicable to:** `MosaicMultiGrid-Collect-IndAgObs-v1` (3 agents, each
-on its own team with `agents_index=[1,2,3]`, so N=0 teammates).
-
-### Documentation
-
-- **[FOOTBALL.md](FOOTBALL.md):** Full Soccer environment analysis, reward shaping, TeamObs design rationale, SMAC citation
+- **[FOOTBALL.md](FOOTBALL.md):** Full Soccer environment analysis, reward shaping, mechanics
 - **[BASKETBALL.md](BASKETBALL.md):** Basketball 3v3 environment, reward ladder, court layout
 - **[AMERICAN_FOOTBALL.md](AMERICAN_FOOTBALL.md):** American Football environments, end zone scoring, reward shaping
 
@@ -494,7 +424,7 @@ Understanding when and how episodes end is crucial for training RL agents. Follo
 
 ### Environment-Specific Criteria
 
-#### Soccer Enhanced (MosaicMultiGrid-Soccer-2v2-IndAgObs-v1) RECOMMENDED
+#### Soccer 
 
 | Criterion | Condition |
 |-----------|-----------|
@@ -507,7 +437,6 @@ Understanding when and how episodes end is crucial for training RL agents. Follo
 | **Episode Length** | Variable (terminates when team wins, or truncates at 200 steps) |
 | **Cooldown** |10-step dual cooldown on stealing (both stealer and victim) |
 
-**Design rationale**: Enhanced Soccer provides **natural termination** when a team wins, significantly reducing training time (~50x faster). Ball respawns after each goal to keep gameplay continuous. Rewards are positive-only (following SMAC convention), with `goal_scored_by` and `passes_completed` metadata for credit assignment and assist chain analysis.
 
 ```python
 env = gym.make('MosaicMultiGrid-Soccer-2v2-IndAgObs-v1')
@@ -532,7 +461,7 @@ for step in range(200):
 
 ---
 
-#### Collect (MosaicMultiGrid-Collect-IndAgObs-v1)
+#### Collect 
 
 | Criterion | Condition |
 |-----------|-----------|
@@ -564,100 +493,6 @@ for step in range(300):
         break
 ```
 
----
-
-#### Collect 2v2 (MosaicMultiGrid-Collect-2v2-IndAgObs-v1) RECOMMENDED
-
-| Criterion | Condition |
-|-----------|-----------|
-| **Terminated** |When all 7 balls are collected |
-| **Truncated** |When `max_steps = 400` (configurable) |
-| **Winning Condition** | Team with highest cumulative score when episode ends |
-| **Scoring Mechanism** | Pickup wildcard ball: +1 to entire team, -1 to opponent team (zero-sum) |
-| **Episode Length** | Variable (150-400 steps typically) |
-| **Ball Count** | 7 balls (ODD number prevents draws!) |
-| **Team Assignment** | agents_index=[1, 1, 2, 2] → Team 1 (agents 0,1) vs Team 2 (agents 2,3) |
-
-```python
-env = gym.make('MosaicMultiGrid-Collect-2v2-IndAgObs-v1')
-obs, _ = env.reset(seed=42)
-
-for step in range(400):
-    actions = {i: agent_policy(obs[i]) for i in range(4)}
-    obs, rewards, terminated, truncated, info = env.step(actions)
-
-    if terminated[0]:  #All 7 balls collected!
-        team1_score = sum(rewards[i] for i in [0, 1])
-        team2_score = sum(rewards[i] for i in [2, 3])
-        winner = "Team 1 (Green)" if team1_score > team2_score else "Team 2 (Red)"
-        print(f"{winner} wins!")
-        break
-```
-
----
-
-#### Soccer 1v1 (MosaicMultiGrid-Soccer-1v1-IndAgObs-v1)
-
-| Criterion | Condition |
-|-----------|-----------|
-| **Terminated** | When any agent scores 2 goals (first-to-win) |
-| **Truncated** | When `max_steps >= 200` (configurable) |
-| **Winning Condition** | First agent to score `goals_to_win` (default: 2) wins |
-| **Scoring Mechanism** | Drop ball at opponent's goal: +1 to scorer (positive-only, no penalty to opponent) |
-| **Ball Respawn** | Ball respawns at random location after each goal |
-| **Episode Length** | Variable (terminates when agent wins, or truncates at 200 steps) |
-| **Passing** | Teleport pass is a no-op (no teammates) -- drop always places ball on ground |
-
-```python
-env = gym.make('MosaicMultiGrid-Soccer-1v1-IndAgObs-v1')
-obs, _ = env.reset(seed=42)
-
-for step in range(200):
-    actions = {i: agent_policy(obs[i]) for i in range(2)}
-    obs, rewards, terminated, truncated, info = env.step(actions)
-
-    if terminated[0]:  # An agent scored 2 goals!
-        winner = "Agent 0 (Green)" if rewards[0] > 0 else "Agent 1 (Red)"
-        print(f"{winner} wins! Episode finished in {step} steps")
-        break
-
-    if truncated[0]:  # Time limit reached
-        print(f"Time limit reached. Determine winner by cumulative score.")
-        break
-```
-
----
-
-#### Collect 1v1 (MosaicMultiGrid-Collect-1v1-IndAgObs-v1)
-
-| Criterion | Condition |
-|-----------|-----------|
-| **Terminated** | When all 3 balls are collected |
-| **Truncated** | When `max_steps = 200` (configurable) |
-| **Winning Condition** | Agent with highest cumulative reward when episode ends |
-| **Scoring Mechanism** | Pickup wildcard ball: +1 to agent, -1 to opponent (zero-sum) |
-| **Episode Length** | Variable (terminates when all 3 balls collected, or truncates at 200 steps) |
-| **Ball Count** | 3 balls (ODD number prevents draws!) |
-| **Team Assignment** | agents_index=[1, 2] -- each agent is its own team |
-
-```python
-env = gym.make('MosaicMultiGrid-Collect-1v1-IndAgObs-v1')
-obs, _ = env.reset(seed=42)
-cumulative_rewards = {i: 0 for i in range(2)}
-
-for step in range(200):
-    actions = {i: agent_policy(obs[i]) for i in range(2)}
-    obs, rewards, terminated, truncated, info = env.step(actions)
-
-    for i in range(2):
-        cumulative_rewards[i] += rewards[i]
-
-    if terminated[0]:  # All 3 balls collected!
-        winner = max(cumulative_rewards, key=cumulative_rewards.get)
-        print(f"Agent {winner} wins! Episode finished in {step} steps")
-        print(f"Final scores: {cumulative_rewards}")
-        break
-```
 
 ### Comparison with MiniGrid
 
@@ -853,14 +688,6 @@ env_cls = to_rllib_env('MosaicMultiGrid-Soccer-2v2-IndAgObs-v1')
 - `ray[rllib] >= 2.0` (for RLlib adapter)
 - `pettingzoo >= 1.22` (for PettingZoo adapter)
 
-## Tests
-
-```bash
-pip install -e ".[dev]"
-pytest tests/ -v
-```
-
-94 tests covering: Action enum, Type/Color/State/Direction enums, WorldObj encode/decode, Grid operations, AgentState vectorized ops, Agent team_index, Mission/MissionSpace, MultiGridEnv reset/step/render, pickup/drop mechanics, Numba JIT observations, rendering dimensions, and reproducibility.
 
 ## Citation
 
@@ -909,8 +736,9 @@ If you use this environment, please cite the relevant works:
 
 ## License
 
-Apache License 2.0 -- see [LICENSE](LICENSE) for details.
+**SPDX-License-Identifier:** `Apache-2.0`
 
-**Original work:** MiniGrid (Copyright 2020 Maxime Chevalier-Boisvert), MultiGrid extension (Copyright 2020 Arnaud Fickinger), INI multigrid (Copyright 2023 Ini Oguntola et al.).
+This project is licensed under the Apache License, Version 2.0, see
+[LICENSE](LICENSE) for the full text.
 
-**This fork:** Copyright 2026 Abdulhamid Mousa.
+

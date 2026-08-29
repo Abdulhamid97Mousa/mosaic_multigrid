@@ -189,8 +189,6 @@ class TestSoccer1vs1:
 
     @pytest.mark.parametrize("env_id", [
         "MosaicMultiGrid-C-2v2-IndAgObs-v1",
-        "MosaicMultiGrid-C-2v2-IndAgObs-v1",
-        "MosaicMultiGrid-C-2v2-TeamObs-v1",
     ])
     def test_collect_2vs2_renamed(self, env_id):
         """Renamed Collect-2vs2 environments should be creatable via gym.make()."""

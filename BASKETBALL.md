@@ -101,7 +101,6 @@ def step(self, actions):
 | Environment ID | Observation Model | Description |
 |----------------|-------------------|-------------|
 | `MosaicMultiGrid-Basketball-3v3-IndAgObs-v1` | Independent agent views | Each agent sees only its 3x3 local window |
-| `MosaicMultiGrid-Basketball-3v3-TeamObs-v1` | Independent + teammate features | 3x3 view + relative teammate positions, directions, has_ball |
 | `MosaicMultiGrid-Basketball-Solo-Green-IndAgObs-v1` | Solo (no opponent) | Single Green agent (team 1), scores at Blue goal (17, 5). New in v6.0.0. |
 | `MosaicMultiGrid-Basketball-Solo-Blue-IndAgObs-v1` | Solo (no opponent) | Single Blue agent (team 2), scores at Green goal (1, 5). New in v6.0.0. |
 
@@ -130,20 +129,6 @@ for step in range(200):
     if terminated[0]:  # A team scored 2 goals
         print(f"Game over in {step} steps!")
         break
-
-env.close()
-```
-
-```python
-# TeamObs: 3x3 views + SMAC-style teammate awareness
-env = gym.make('MosaicMultiGrid-Basketball-3v3-TeamObs-v1', render_mode='rgb_array')
-obs, info = env.reset(seed=42)
-
-# Each agent's observation now includes teammate info:
-print(obs[0]['image'].shape)              # (3, 3, 3) -- unchanged
-print(obs[0]['teammate_positions'])       # (2, 2) relative (dx, dy) to each of 2 teammates
-print(obs[0]['teammate_directions'])      # (2,)   direction each teammate faces
-print(obs[0]['teammate_has_ball'])        # (2,)   1 if teammate carries ball
 
 env.close()
 ```
@@ -378,20 +363,6 @@ The 3x3 image is a **directional** partial view: the agent is at the rear-center
 
 Coverage: 9 cells out of 153 playable = ~6% of the court. Agents almost never see teammates or opponents in their local window, which makes team coordination a genuine challenge.
 
-### TeamObs (SMAC-style Teammate Awareness)
-
-Adds to each agent's observation:
-
-| Feature | Shape | Description |
-|---------|-------|-------------|
-| `teammate_positions` | (2, 2) int64 | Relative (dx, dy) from self to each of 2 teammates |
-| `teammate_directions` | (2,) int64 | Direction each teammate faces (0-3) |
-| `teammate_has_ball` | (2,) int64 | 1 if teammate carries ball, 0 otherwise |
-
-The local 3x3 `image`, `direction`, and `mission` are preserved unchanged. TeamObs only ADDS new keys.
-
-With 3 agents per team, each agent has N=2 teammates.
-
 ### Ball Carrying Observability
 
 Agents can see when other agents in their view are carrying the ball, using the STATE channel encoding:
@@ -527,7 +498,6 @@ frame = env.render()
 | Max steps | 300 | 300 | 300 |
 | Zero-sum | Yes | Yes | Yes |
 | Observation (IndAgObs) | 3x3 local view | 3x3 local view | 3x3 local view |
-| TeamObs teammates | N=1 (1 teammate in 2v2) | N=2 (2 teammates in 3v3) | N=1 or N=2 (depending on variant) |
 
 **Consistent mechanics across all three sports:**
 - Walk-in scoring (carry ball → step into goal area → automatic score)
@@ -660,7 +630,7 @@ The solo classes inherit all IndAgObs mechanics, but several become no-ops:
 - Basic defensive positioning
 
 ### Phase 4: Passing + Role Specialization (700k-1.5M episodes)
-- Learn to pass to open teammates (especially with TeamObs)
+- Learn to pass to open teammates
 - Offensive/defensive role emergence
 - 2-on-1 fast break plays
 - Defensive rotation

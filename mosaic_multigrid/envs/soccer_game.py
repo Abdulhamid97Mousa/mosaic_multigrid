@@ -885,3 +885,133 @@ class SoccerGame8HIndAgObsEnv16x11N4(SoccerGameIndAgObsEnv):
             num_balls=[1], agents_index=[1, 1, 1, 1, 2, 2, 2, 2], balls_index=[0],
             zero_sum=False, **kwargs,
         )
+
+
+class SoccerGame1v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """1 Green vs 2 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame2v1IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """2 Green vs 1 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame1v3IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """1 Green vs 3 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame3v1IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """3 Green vs 1 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame1v4IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """1 Green vs 4 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame4v1IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """4 Green vs 1 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame2v3IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """2 Green vs 3 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame3v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """3 Green vs 2 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame2v4IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """2 Green vs 4 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 2, 2, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )
+
+
+class SoccerGame4v2IndAgObsEnv16x11(SoccerGameIndAgObsEnv):
+    """4 Green vs 2 Blue asymmetric competitive Soccer (16x11)."""
+    def __init__(self, **kwargs):
+        kwargs.setdefault('max_steps', 256)
+        kwargs.setdefault('goals_to_win', 2)
+        super().__init__(
+            size=None, width=16, height=11,
+            goal_pos=[[1,4],[1,5],[1,6],[14,4],[14,5],[14,6]], goal_index=[1,1,1,2,2,2],
+            num_balls=[1], agents_index=[1, 1, 1, 1, 2, 2], balls_index=[0],
+            zero_sum=False, **kwargs,
+        )

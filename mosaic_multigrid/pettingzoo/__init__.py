@@ -89,7 +89,7 @@ class PettingZooWrapper(ParallelEnv):
     def __init__(self, env: MultiGridEnv):
         self.env = env
         # Use unwrapped to reach base MultiGridEnv attributes through any
-        # Gymnasium wrappers (e.g. TeamObsWrapper, FullyObsWrapper).
+        # Gymnasium wrappers (e.g. FullyObsWrapper, OneHotObsWrapper).
         base = env.unwrapped if hasattr(env, 'unwrapped') else env
         self.possible_agents: list[AgentID] = [a.index for a in base.agents]
         self.agents: list[AgentID] = self.possible_agents[:]

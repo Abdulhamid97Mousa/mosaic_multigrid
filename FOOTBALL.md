@@ -377,8 +377,6 @@ the ball warps to a random eligible teammate anywhere on the grid. The passer
 does NOT need to see the receiver. RL agents learn WHEN to pass (e.g., when
 near an opponent), not WHERE the teammate is.
 
-**For informed passing, use the TeamObs variant** (see below).
-
 ---
 
 ### Example 3: Opponent Awareness
@@ -691,7 +689,7 @@ task completion and is semantically different from `noop`.
 | **Score goal** | +1 (shared to scoring team) | Positive-only, ONLY way to win |
 | **Win (2 goals)** | Episode terminates | Natural termination signal |
 
-**Positive-only rewards (v4.2.0):** IndAgObs Soccer variants now use positive-only shared team rewards, following the SMAC convention (`reward_only_positive=True`). Opponents receive 0 on conceded goals, not -1.
+**Positive-only rewards (v4.2.0):** IndAgObs Soccer variants use positive-only shared team rewards (`reward_only_positive=True`). Opponents receive 0 on conceded goals, not -1.
 
 **Event tracking (v4.2.0):** Three event types are tracked as metadata in the info dict: `goal_scored_by` records `{step, scorer, team}`, `passes_completed` records `{step, passer, receiver, team}`, and `steals_completed` records `{step, stealer, victim, team}`. Together these cover the full action chain (steal, pass, goal) for post-hoc credit attribution without affecting the reward signal.
 
@@ -791,65 +789,6 @@ Passing is blind (teleport to random eligible teammate).
 
 ---
 
-### **MosaicMultiGrid-Soccer-2v2-TeamObs-v1** (Recommended for team coordination)
-
-**Status:** [RECOMMENDED] For RL training requiring team coordination
-
-```python
-# TeamObs variant -- SMAC-style teammate awareness
-env = gym.make(
-    'MosaicMultiGrid-Soccer-2v2-TeamObs-v1',
-    render_mode='rgb_array',
-)
-obs, _ = env.reset()
-
-# Each agent's observation now includes:
-print(obs[0].keys())
-# dict_keys(['image', 'direction', 'mission',
-#            'teammate_positions', 'teammate_directions', 'teammate_has_ball'])
-
-# Teammate features for agent 0:
-print(obs[0]['teammate_positions'])    # [[dx, dy]] relative to self (shape: N x 2)
-print(obs[0]['teammate_directions'])   # [dir]  teammate facing direction (shape: N)
-print(obs[0]['teammate_has_ball'])     # [0/1]  is teammate carrying ball? (shape: N)
-```
-
-**What it adds** (over Soccer-Enhanced-v0):
-
-| Feature | Shape | Description |
-|---------|-------|-------------|
-| `teammate_positions` | (N, 2) int64 | Relative (dx, dy) from self to each teammate |
-| `teammate_directions` | (N,) int64 | Direction each teammate faces (0-3) |
-| `teammate_has_ball` | (N,) int64 | 1 if teammate carries ball, 0 otherwise |
-
-Where N = number of teammates (1 in Soccer 2v2).
-
-**What stays the same:** The 3x3 local `image`, `direction`, and `mission`
-are preserved unchanged from Soccer-Enhanced-v0. TeamObs only ADDS new keys.
-
-**Why this exists:** On a 16x11 field with `view_size=3`, agents see only 7%
-of the grid. Teammates are almost never visible in the 3x3 window. Without
-TeamObs, passing is entirely blind. With TeamObs, agents can learn informed
-passing strategies (e.g., "pass when teammate is near opponent goal").
-
-**Design rationale -- SMAC observation pattern:**
-
-This follows the standard MARL observation augmentation pattern established
-by SMAC (Samvelyan et al., 2019). In SMAC, each agent receives its local
-view unchanged, plus structured features about allies (relative positions,
-health, unit type). This is the standard approach in cooperative MARL:
-
-> Samvelyan, M., Rashid, T., de Witt, C. S., et al. (2019).
-> "The StarCraft Multi-Agent Challenge." CoRR, abs/1902.04043.
-
-The key insight: teammate features are **environment-level** observation
-augmentation, not a training-time trick. The environment provides richer
-observations; the RL algorithm decides what to do with them. This is
-orthogonal to CTDE (Centralized Training, Decentralized Execution), which
-is a training architecture choice.
-
----
-
 ### **MosaicMultiGrid-Soccer-Solo-Green-IndAgObs-v1** and **MosaicMultiGrid-Soccer-Solo-Blue-IndAgObs-v1** (New in v6.0.0)
 
 **Status:** [NEW] single agent, no opponent
@@ -903,18 +842,18 @@ The policy is team-dependent `pi_agent_0` trained as Green has implicitly learne
 
 ### **Environment Comparison**
 
-| Aspect | `Soccer-2v2-IndAgObs-v1` | `Soccer-2v2-IndAgObs-v1` | `Soccer-2v2-TeamObs-v1` | `Soccer-Solo-*-v1` |
-|--------|-------------|---------------------|---------------------|---------------------|
-| **Status** | Deprecated | Recommended | Recommended | New (v6.0.0) |
-| **Agents** | 4 (2v2) | 4 (2v2) | 4 (2v2) | 1 (solo, no opponent) |
-| **Ball respawn** | No | Yes | Yes | Yes |
-| **Termination** | Never | First to 2 goals | First to 2 goals | First to 2 goals |
-| **Observability** | No ball carrier info | STATE channel encoding | STATE + teammate features | STATE channel encoding |
-| **Teammate info** | None | None (independent views) | Positions + directions + has_ball | N/A (no teammates) |
-| **Passing strategy** | N/A (broken) | Blind teleport | Informed (knows teammate location) | N/A (drops to ground) |
-| **Cooldown** | None | 10-step dual | 10-step dual | N/A (no opponents) |
-| **Map size** | 15x10 | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) |
-| **Use case** | Legacy only | Standard RL training | Team coordination research | Curriculum pre-training |
+| Aspect | Legacy | `Soccer-2v2-IndAgObs-v1` | `Soccer-Solo-*-v1` |
+|--------|-------------|---------------------|---------------------|
+| **Status** | Deprecated | Recommended | New (v6.0.0) |
+| **Agents** | 4 (2v2) | 4 (2v2) | 1 (solo, no opponent) |
+| **Ball respawn** | No | Yes | Yes |
+| **Termination** | Never | First to 2 goals | First to 2 goals |
+| **Observability** | No ball carrier info | STATE channel encoding | STATE channel encoding |
+| **Teammate info** | None | None (independent views) | N/A (no teammates) |
+| **Passing strategy** | N/A (broken) | Blind teleport | N/A (drops to ground) |
+| **Cooldown** | None | 10-step dual | N/A (no opponents) |
+| **Map size** | 15x10 | 16x11 (FIFA ratio) | 16x11 (FIFA ratio) |
+| **Use case** | Legacy only | Standard RL training | Curriculum pre-training |
 
 ---
 
@@ -928,7 +867,6 @@ The policy is team-dependent `pi_agent_0` trained as Green has implicitly learne
 | Cooldown | None (infinite stealing) | [FIXED] 10-step dual cooldown |
 | Passing | Adjacency handoff (1 cell) | [FIXED] Teleport to any teammate |
 | Map size | 15x10 | [FIXED] 16x11 (FIFA ratio) |
-| Teammate awareness | None (independent views) | [NEW] TeamObs variant (SMAC-style) |
 | Solo pre-training | Not available | [NEW] Solo Green/Blue variants (v6.0.0) |
 | Training time | ~6 weeks | [IMPROVED] ~3 weeks (natural termination) |
 
@@ -940,5 +878,4 @@ These improvements transform Soccer from a broken environment into a **research-
 - Multi-agent coordination (passing, role specialization)
 - Competitive team play (positive-only rewards, offense/defense balance)
 - Emergent strategic behavior (MAPPO role discovery)
-- Controlled observation ablation studies (Independent vs TeamObs)
 - Credit assignment research (goal_scored_by tracking in info dict)

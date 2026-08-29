@@ -47,13 +47,13 @@ The `view_size=3` configuration originates from gym-multigrid [Fickinger et al.,
 
 ### Emergent Coordination Under Information Constraints
 
-Small view windows create a qualitatively different problem from fully observable settings. When agents can see only a small neighbourhood, team-level coordination cannot be achieved through simple greedy local policies. This forces the emergence of spatial role specialisation (for example, attack and defend splits) and, in settings that augment observations with teammate state (TeamObs), explicit conditioning on communicated information.
+Small view windows create a qualitatively different problem from fully observable settings. When agents can see only a small neighbourhood, team-level coordination cannot be achieved through simple greedy local policies. This forces the emergence of spatial role specialisation (for example, attack and defend splits).
 
 ### Parameter Sharing and Observation Degeneracy
 
 A critical consequence of small view windows in settings that employ **parameter sharing** across agents [Christianos et al., 2021; Kim and Sung, 2023] is **observation degeneracy**. When multiple agents simultaneously occupy regions of the field with similar local structure (open floor, no visible ball or goals), their observations $o_t^i$ and $o_t^j$ become near-identical. Under a shared policy $\pi_\theta$, near-identical observations produce near-identical action distributions, leading to **crowding**: all agents converging to the same cell or direction.
 
-This pathology is the primary motivation for the TeamObs observation variant (see `OBSERVATION_MODELS.md`), which provides each agent with unique teammate-relative features, breaking observation symmetry even when the local grid image is uninformative.
+The standard mitigation is to inject a per-agent identity vector into the observation at the algorithm level (EPyMARL-style `obs_agent_id`; see Papoudakis et al., 2021), breaking observation symmetry even when the local grid image is uninformative.
 
 ---
 
@@ -146,7 +146,7 @@ mosaic_multigrid modernises the gym-multigrid codebase while preserving the part
 | Modular package structure | INI multigrid | Adopted |
 | Reproducibility fix (seeded `np_random`) | mosaic_multigrid | New |
 | Numba JIT optimisation | mosaic_multigrid | New |
-| IndAgObs / TeamObs observation variants | mosaic_multigrid | New |
+| IndAgObs observation variant | mosaic_multigrid | New |
 | American Football and Basketball environments | mosaic_multigrid | New |
 
 ---
@@ -194,4 +194,4 @@ Kim, W. and Sung, Y. (2023). Parameter sharing with network pruning for scalable
 
 Oliehoek, F. A. and Amato, C. (2016). *A Concise Introduction to Decentralized POMDPs*. Springer.
 
-Samvelyan, M., Rashid, T., de Witt, C. S., Farquhar, G., Nardelli, N., Rudner, T. G. J., Hung, C.-M., Torr, P. H. S., Foerster, J., and Whiteson, S. (2019). The StarCraft multi-agent challenge. *arXiv preprint* arXiv:1902.04043.
+Papoudakis, G., Christianos, F., Schäfer, L., and Albrecht, S. V. (2021). Benchmarking multi-agent deep reinforcement learning algorithms in cooperative tasks. In *Proceedings of the Neural Information Processing Systems (NeurIPS) Track on Datasets and Benchmarks*.

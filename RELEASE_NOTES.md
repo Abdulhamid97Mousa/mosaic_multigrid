@@ -6,6 +6,90 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [7.0.0] - 2026-08-28
+
+### Overview
+
+**Breaking release.** `TeamObs` environments and SMAC-style teammate
+observations are removed from the package entirely. No deprecation window.
+Existing training code that used `TeamObs` variants should migrate to
+`IndAgObs` variants combined with algorithm-level agent identity
+(EPyMARL `obs_agent_id`).
+
+### Breaking Changes
+
+**All `MosaicMultiGrid-*-TeamObs-v1` env IDs are removed.**
+`gymnasium.make('MosaicMultiGrid-BB-2v2-TeamObs-v1')` now raises
+`gymnasium.error.NameNotFound`. 42 registered IDs affected across the 4
+sport families (Soccer, Basketball, American Football, Collect).
+
+**`TeamObsWrapper` class removed from `mosaic_multigrid.wrappers`.**
+`from mosaic_multigrid.wrappers import TeamObsWrapper` now raises
+`ImportError`.
+
+**Removed environment classes (41 total):** all `*TeamObsEnv` classes
+covering symmetric competitive, one-sided cooperative, and 4v4 formats
+across Soccer, Basketball, American Football, and Collect.
+
+**Removed test file:** `tests/test_teamobs.py`.
+
+### Migration
+
+For symmetry-breaking in parameter-sharing MARL, use **EPyMARL-style
+`obs_agent_id`** — a one-hot agent identity vector appended inside your
+training algorithm, not at the environment level. Reference:
+
+> Papoudakis, G., Christianos, F., Schäfer, L., and Albrecht, S. V. (2021).
+> Benchmarking multi-agent deep reinforcement learning algorithms in
+> cooperative tasks. NeurIPS Track on Datasets and Benchmarks.
+
+Existing code that used TeamObs should switch to:
+
+1. Use the standard `IndAgObs` env variant.
+2. Inside the training loop, append `jnp.eye(n_agents)` (JAX) or
+   `torch.eye(n_agents)` (PyTorch) to each agent's observation before
+   feeding to the shared policy network.
+
+### Changed
+
+- `README.md`, `FOOTBALL.md`, `BASKETBALL.md`, `AMERICAN_FOOTBALL.md`,
+  `COLLECT_IMPROVEMENTS.md`, `OBSERVATION_MODELS.md`, and
+  `PARTIAL_OBSERVABILITY.md` no longer mention TeamObs or SMAC.
+- `OBSERVATION_MODELS.md` retitled to *Observation Model: Independent Agent
+  Observations (IndObs)* and truncated to the IndObs-only content
+  (679 → 254 lines).
+- New figures `figures/envs_{BB,AF,S}_v2.png` show 9 canonical envs per
+  sport in a 3×3 grid (2 solo + 3 symmetric competitive + 4 one-sided
+  cooperative). Original `envs_{BB,AF,S}.png` kept for historical
+  reference but unlinked from README.
+- New `scripts/generate_env_figures.py` for reproducible figure
+  regeneration.
+- `figures/Gym-MosaicMultiGrid-Soccer-TeamObs-v0.png` removed.
+
+### Compatibility Fallback
+
+Users who cannot migrate immediately can pin to the previous release:
+
+```
+pip install mosaic_multigrid==6.9.0
+```
+
+### Registered Environment Summary (post-7.0.0)
+
+51 environments remain registered across 4 sports:
+
+- **Soccer (S):** 16 envs — 2 solo, 1v1, 2v2, 3v3, 4v4, and one-sided
+  cooperative from 2v0/0v2 up to 6v0/0v6 (all IndAgObs).
+- **Basketball (BB):** 16 envs — same structure as Soccer.
+- **American Football (AF):** 16 envs — same structure as Soccer.
+- **Collect (C):** 3 envs — individual 3-agent, 1v1 team, 2v2 team.
+
+Only the 9-env "canonical" subset per sport is showcased in the README
+figures; the higher-agent-count variants (4v0 → 6v0, 4v4) remain
+registered for research use.
+
+---
+
 ## [6.7.0] - 2026-05-15
 
 ### Overview
