@@ -1,5 +1,12 @@
 # mosaic_multigrid
 
+[![PyPI version](https://img.shields.io/pypi/v/mosaic-multigrid.svg)](https://pypi.org/project/mosaic-multigrid/)
+[![Python](https://img.shields.io/pypi/pyversions/mosaic-multigrid.svg)](https://pypi.org/project/mosaic-multigrid/)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/blob/main/LICENSE)
+[![Docs](https://readthedocs.org/projects/mosaic-multigrid/badge/?version=latest)](https://mosaic-multigrid.readthedocs.io/en/latest/)
+[![Tests](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/actions/workflows/tests.yaml/badge.svg)](https://github.com/Abdulhamid97Mousa/mosaic_multigrid/actions/workflows/tests.yaml)
+[![Downloads](https://static.pepy.tech/badge/mosaic-multigrid)](https://pepy.tech/project/mosaic-multigrid)
+
 **Multi-agent gridworld environments for reproducible RL experiments.**
 
 <p align="center">
