@@ -1,0 +1,17 @@
+/* mosaic_multigrid docs custom styles */
+
+/* Sidebar logo (circular mosaic mark) */
+.sidebar-brand {
+    padding: 0.5rem;
+}
+
+.sidebar-logo {
+    max-width: 128px;
+    margin: 0 auto;
+    border-radius: 50%;
+}
+
+.sidebar-brand-text {
+    font-size: 1.25rem !important;
+    text-align: center;
+}
