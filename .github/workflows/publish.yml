@@ -39,3 +39,5 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing / OIDC)
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip_existing: true
